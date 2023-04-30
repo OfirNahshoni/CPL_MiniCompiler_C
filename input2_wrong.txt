@@ -1,0 +1,4 @@
+MyProg
+start
+decl int: a,b,c;
+end
