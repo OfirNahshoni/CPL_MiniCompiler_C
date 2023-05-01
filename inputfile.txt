@@ -1,0 +1,7 @@
+program MyProg
+start
+decl int: a, b;
+string: x, y;
+real: c, d, w;
+final real g = 7.1;
+end

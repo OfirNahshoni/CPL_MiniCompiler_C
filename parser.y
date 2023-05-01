@@ -10,22 +10,18 @@
 	#include "symbol_table.h"
 	#include "my_structs.h"
 
-	// File pointers
-	FILE* err_fp;
-	FILE* mips_fp;
-
 	// Global variables
 	symbol_table* SymbolTable;
 	bool is_prog_valid = true;
 	char current_type;
 
-
 	// External variables (from lex file)
 	extern int line;
 	extern int col;
+	extern int yylex(void);
+	extern FILE* yyin;
 
 	void yyerror(const char* msg);
-	extern int yylex();
 %}
 %union {
 	Op myop;
@@ -38,60 +34,29 @@
 %token BREAK CASE DECL DEFAULT ELSE END FINAL FOREACH IF IN INT
 %token OUT PROGRAM REAL START STRING SWITCH THEN TILL WHILE WITH
 
-%type <val> factor list declarlist decl declarations
+%type <val> factor list declarlist decl cdecl declarations
 %type <mytype> type
+%start program
 
 %%
-program: PROGRAM ID {
-	// Write to the mips file - headline and the title to define the variables
-	fprintf(mips_fp, "#Ofir Nahshoni, 204616718\n#Eldar Garret, 312434293\n.data");
-	
+program: PROGRAM ID {	
 	// Create the symbol table
-	SymbolTable = create_symbol_table(2);
+	SymbolTable = create_symbol_table(1);
 }
 START declarations stmtlist END { 
 	if (is_prog_valid) {
-		printf("\nsuccess\n");
+		printf("\nSuccess\n");
 		print(SymbolTable);
 		free_symbol_table(SymbolTable);
 	}
-	
 	else {
-		// Delete the mips file
-		printf("\nThere are errors\n");
+		printf("\nNot Valid\n");
 		free_symbol_table(SymbolTable);
 	}
 }
-| error ID START declarations stmtlist END {
-	is_prog_valid = false; // Set Validation flag
-	printf("program keywork is missing");
-	free_symbol_table(SymbolTable);
-}
-| PROGRAM errmsg START declarations stmtlist END
-| PROGRAM ID error declarations stmtlist END {
-	is_prog_valid = false; // Set Validation flag
-	printf("start keywork is missing");
-	free_symbol_table(SymbolTable);
-}
-// | PROGRAM ID START declarations stmtlist error {
-// 	is_prog_valid = false; // Set Validation flag
-// 	yyerror("end keywork is missing");
-// 	free_symbol_table(SymbolTable);
-// }
-;
-
-errmsg: {
-		printf("program ID (name of the program) is missing");
-		is_prog_valid = false;
-		free_symbol_table(SymbolTable);
-	}
 ;
 
 declarations: DECL declarlist cdecl
-| error declarlist cdecl {
-	is_prog_valid = false;
-	printf("decl keyword is missing");
-}
 |
 ;
 
@@ -99,86 +64,49 @@ declarlist: declarlist decl
 | decl
 ;
 
-// rule1
 decl: type ':' list ';' { $3.type = current_type; }
 ;
 
-// rule2.1
 list: ID ',' list {
-	// Search ID in symbol table
 	symbol_table_entry* tempSymID = lookup(SymbolTable, $1.sval);
-	
-	if (tempSymID) { // Error - ID is already in Symbol Table
+	if (tempSymID) {
 		is_prog_valid = false;
 		yyerror("ID is already defined");
 	}
-	else { // ID not found - Need to add to Symbol Table
+	else	
 		add_attribute(SymbolTable, $1.sval, current_type, false, false);
-		$$.type = $3.type;
-	}
 }
-// rule2.2
 | ID {
-	// Search ID in symbol table
 	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
-
-	if (tempID) { // Error - ID is already in Symbol Table
+	if (tempID) {
 		is_prog_valid = false;
 		yyerror("ID already defined");
 	}
-
-	else { // Not found - Add to Symbol Table
+	else
 		add_attribute(SymbolTable, $1.sval, current_type, false, false);
-	}
 }
 ;
 
-// rule3.1
-type: INT { 
-	current_type = 'i';
-	$$ = 'i';
-}
-| REAL { 
-	current_type = 'r';
-	$$ = 'r';
-}
-| STRING { 
-	current_type = 's';
-	$$ = 's';
-}
+type: INT { current_type = 'i'; }
+| REAL { current_type = 'r'; }
+| STRING { current_type = 's'; }
 ;
 
 cdecl: FINAL type ID ASSIGN NUM ';' cdecl {
-	// Set to const
+	// final int x = 2;
 	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
-
-	if (tempID) { // Error already defined
+	if (tempID) {
 		is_prog_valid = false;
-		yyerror("ID already defined");
+		yyerror("ID is already defined");
 	}
 	else {
-		// Check if assigned value is from the same type
-		if (current_type == $5.type)
-			add_attribute(SymbolTable, $3.sval, current_type, true, true);
+		if (current_type != $5.type) {
+			is_prog_valid = false;
+			yyerror("Wrong value assigned");
+		}
 		else
-			printf("Error in assignment of different type from the ID\n");
+			add_attribute(SymbolTable, $3.sval, current_type, true, true);
 	}
-}
-| error type ID ASSIGN NUM ';' cdecl {
-	is_prog_valid = false;
-	yyerror("final keyword is missing");
-}
-| FINAL type error ASSIGN NUM ';' cdecl {
-	is_prog_valid = false;
-	yyerror("id is missing");
-}
-| FINAL type ID error NUM ';' cdecl {
-	is_prog_valid = false;
-	yyerror("assign symbol (=) is missing");
-}
-| FINAL type ID ASSIGN error ';' cdecl {
-	is_prog_valid = false;
-	yyerror("No value assigned to the ID");
 }
 |
 ;
@@ -256,34 +184,15 @@ factor: '(' expression ')'
 // Main function
 int main(int argc, char* argv[])
 {
-	extern FILE* yyin;
 	yyin = fopen(argv[1], "r");
 	assert(yyin);
 
-	// MIPS file - open to append
-	mips_fp = fopen("mips_result.asm", "a");
-	assert(mips_fp);
+	printf("%d) ", line++);
 
-	// ErrorList file - open to append
-	err_fp = fopen("errors_list.txt", "a");
-	assert(err_fp);
-
-	// Parsing by Bison
 	do {
-		printf("%d) ", line++);
 		yyparse();
 	} while(!feof(yyin));
-
-	// Close the files - after parsing
 	fclose(yyin);
-	fclose(err_fp);
-	fclose(mips_fp);
-
-	if (!is_prog_valid)
-		remove("mips_result.asm");
-	else
-		remove("errors_list.txt");
-
 
 	return 0;
 }
@@ -292,7 +201,5 @@ int main(int argc, char* argv[])
 void yyerror(const char* msg)
 {
 	// Print errors to the screen
-	fprintf(stderr, "Error (line %d, col %d): %s\n", line, col, msg);
-	// Add error to the errors list file
-	fprintf(err_fp, "Error (line %d, col %d): %s\n", line, col, msg);
+	fprintf(stderr, "\nError (line %d, col %d): %s\n", line-1, col, msg);
 }

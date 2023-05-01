@@ -105,7 +105,7 @@ void print(symbol_table* table) {
     for (int i = 0; i < table->size; i++) {
         temp_entry = table->entries[i];
         while (temp_entry != NULL) {
-            printf("Index: %d, Name: %s, Type: %c, Is init: %s, Is Const: %s\n", i, temp_entry->name, temp_entry->type, temp_entry->is_init, temp_entry->is_const);
+            printf("Index: %d, Name: %s, Type: %c, Is init: %d, Is Const: %d\n", i, temp_entry->name, temp_entry->type, temp_entry->is_init, temp_entry->is_const);
             temp_entry = temp_entry->next;
         }
     }
