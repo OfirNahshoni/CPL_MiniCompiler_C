@@ -58,13 +58,14 @@ symbol_table_entry* lookup(symbol_table* table, char* name) {
     // Search for the entry starting at the generated index using linear probing
     while (temp_entry != NULL) {
         // Return the address of a table entry
-        if (strcmp(table->entries[index]->name, name) == 0)
-            return table->entries[index];
+        if (strcmp(temp_entry->name, name) == 0) {
+            // printf("\n%s\n", temp_entry->name);
+            return temp_entry;
+        }
 
         // else
         temp_entry = temp_entry->next;
     }
-
     // If we didnt find it
     return NULL;
 }
@@ -74,12 +75,11 @@ symbol_table_entry* lookup(symbol_table* table, char* name) {
 void add_attribute(symbol_table* table, char* name, char type, bool is_att_const, bool is_att_init) {
     // compute hash value for name
     int index = hash(name, table->size);
+    symbol_table_entry* temp_entry;
 
-    symbol_table_entry* temp_entry = lookup(table, name);
-
-    if (temp_entry != NULL) {
-        fprintf(stderr, "Redeclaration the ID");
-        return;
+    // Move until the first empty symbol_table_entry
+    while (temp_entry != NULL) {
+        temp_entry = temp_entry->next;
     }
 
     // Allocate new entry
@@ -90,6 +90,7 @@ void add_attribute(symbol_table* table, char* name, char type, bool is_att_const
     temp_entry->type = type;
     temp_entry->is_init = is_att_init;
     temp_entry->is_const = is_att_const;
+
 
     // Connect to linked list
     temp_entry->next = table->entries[index];

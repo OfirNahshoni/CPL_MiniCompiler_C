@@ -47,13 +47,13 @@ SYMBOL "("|")"|"{"|"}"|","|":"|";"|"!"
 "while" { col += yyleng; fprintf(yyout, "%s", yytext); return WHILE; }
 "with" { col += yyleng; fprintf(yyout, "%s", yytext); return WITH; }
 {SYMBOL} { col++; fprintf(yyout, "%s", yytext); return yytext[0]; }
-{LETTER}[[a-zA-Z]*|[0-9]*] { 
-								col += yyleng;
-								fprintf(yyout, "%s", yytext);
-								yylval.val.sval = strdup(yytext);
-								return ID;
-							}
-{DIGIT}+ {
+{LETTER}[a-zA-Z0-9]* { 
+						col += yyleng;
+						fprintf(yyout, "%s", yytext);
+						yylval.val.sval = strdup(yytext);
+						return ID;
+					}
+[0-9]+ {
 			col += yyleng;
 			fprintf(yyout, "%s", yytext);
 			yylval.val.sval = strdup(yytext);

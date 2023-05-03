@@ -1,7 +1,9 @@
-program MyProg
+program MyProg1
 start
-decl int: a, b;
-string: x, y;
-real: c, d, w;
-final real g = 7.1;
+decl int: x, y, z;
+real: w;
+string: q1a, s111;
+final int x = 5;
+y = 5;
+w = y + 4;
 end

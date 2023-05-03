@@ -34,14 +34,14 @@
 %token BREAK CASE DECL DEFAULT ELSE END FINAL FOREACH IF IN INT
 %token OUT PROGRAM REAL START STRING SWITCH THEN TILL WHILE WITH
 
-%type <val> factor list declarlist decl cdecl declarations
-%type <mytype> type
-%start program
+%type <val> list declarlist decl cdecl declarations
+%type <val> type expression factor term
+
 
 %%
 program: PROGRAM ID {	
 	// Create the symbol table
-	SymbolTable = create_symbol_table(1);
+	SymbolTable = create_symbol_table(2);
 }
 START declarations stmtlist END { 
 	if (is_prog_valid) {
@@ -67,16 +67,16 @@ declarlist: declarlist decl
 decl: type ':' list ';' { $3.type = current_type; }
 ;
 
-list: ID ',' list {
+list: ID ',' list { // 2.1
 	symbol_table_entry* tempSymID = lookup(SymbolTable, $1.sval);
 	if (tempSymID) {
 		is_prog_valid = false;
 		yyerror("ID is already defined");
 	}
-	else	
+	else
 		add_attribute(SymbolTable, $1.sval, current_type, false, false);
 }
-| ID {
+| ID { // 2.2
 	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
 	if (tempID) {
 		is_prog_valid = false;
@@ -130,7 +130,23 @@ out_stmt: OUT '(' expression ')' ';'
 in_stmt: IN '(' ID ')' ';'
 ;
 
-assign_stmt: ID ASSIGN expression ';'
+// x = y+5.1;
+assign_stmt: ID ASSIGN expression ';' {
+	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
+	if (tempID == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		printf("\nleft.type=%c , right.type = %c\n", tempID->type, $3.type);
+		if (tempID->type != $3.type) {
+			if (tempID->type == 'i') {
+				is_prog_valid = false;
+				yyerror("Assign operation is not valid!");
+			}
+		}
+	}
+}
 ;
 
 control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt 
@@ -167,17 +183,46 @@ bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factore */
 | expression RELOP expression
 ;  
 
-expression: expression PLUS term 
-| term
+expression: expression PLUS term {
+	if ($1.type == 'r' || $3.type == 'r')
+		$$.type = 'r';
+	else
+		$$.type = 'i';
+}
+| term {
+	$$.type = $1.type;
+}
 ;
 
 term: term MUL factor
-| factor
+| factor { // 3
+	$$.type = $1.type;
+	// printf("\n3) %c\n", $$.type);
+}
 ;
 
 factor: '(' expression ')'
-| ID
-| NUM
+| ID { // 1
+	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
+	if (tempID == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (tempID->type == 's') {
+			is_prog_valid = false;
+			yyerror("String should not used in arithmetic operations!");
+		}
+		else {
+			current_type = tempID->type;
+			$$.type = current_type;
+		}
+	}
+}
+| NUM { // 1
+	current_type = $1.type; // 'r' or 'i'
+	$$.type = current_type;
+}
 ;
 
 %%
