@@ -147,15 +147,16 @@ in_stmt: IN '(' ID ')' ';' {
 	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
 	if (tempID == NULL) {
 		is_prog_valid = false;
-		yyerror("You must declate the type of ID to get input to it.");
+		yyerror("You must declar the type of ID to get input to it.");
 	}
 	else {
 		if (tempID->is_const) {
 			is_prog_valid = false;
 			yyerror("You cannot change value of const (final) variable.");
 		}
+		else
+			tempID->is_init = true;
 	}
-	// MIPS - syscall of input ??
 }
 ;
 
@@ -172,7 +173,7 @@ assign_stmt: ID ASSIGN expression ';' { // 1
 	else {
 		if (tempID->is_const) {
 			is_prog_valid = false;
-			yyerror("Cannot assign to const (final) variable.");
+			yyerror("Cannot assign value to const (final) variable.");
 		}
 		if (tempID->type != $3.type) { // 'i' = 'r' // 'r' == 'i' // 'r' = 's'
 			if (tempID->type == 'i' || tempID->type == 's') {
@@ -186,10 +187,33 @@ assign_stmt: ID ASSIGN expression ';' { // 1
 ;
 
 control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt {
-
+	// bool_expr true -> jump ?
 }
-| WHILE '(' bool_expr ')' stmt_block
-| FOREACH ID ASSIGN NUM TILL NUM WITH step stmt 
+| WHILE '(' bool_expr ')' stmt_block {
+	// j loop
+	// bne 
+}
+| FOREACH ID ASSIGN NUM TILL NUM WITH step stmt {
+	symbol_table_entry* tempID = lookup(SymbolTable, $2.sval);
+	if (tempID == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (tempID->is_const) {
+			is_prog_valid = false;
+			yyerror("Cannot assign value to const (final) variable.");
+		}
+		else {
+			if ($2.type == 'i' && $4.type == 'r') {
+				is_prog_valid = false;
+				yyerror("Cannot assign real value to int.");
+			}
+			else
+				tempID->is_init = true;
+		}
+	}
+} 
 | FOREACH ID ASSIGN NUM TILL ID WITH step stmt
 | _switch
 ;
@@ -207,6 +231,7 @@ cases: CASE NUM ':' stmtlist BREAK ';' cases
 step: ID ASSIGN ID PLUS NUM
 | ID ASSIGN ID MINUS NUM
 | ID ASSIGN ID MUL NUM
+| ID ASSIGN ID DIV NUM
 ;
 
 bool_expr: bool_expr OR bool_term
@@ -215,18 +240,15 @@ bool_expr: bool_expr OR bool_term
 
 bool_term: bool_term AND bool_factor
 | bool_factor {
-
+	
 }
 ;
 
-// if (x > 5 and !(x * 2 > 6))
-// t0 = t1 + t2
 bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factore */ {
 	$$.res_bool_exp = !($3.res_bool_exp);
+	// bne - mips
 }
-| expression RELOP expression {
-
-}
+| expression RELOP expression
 ;
 
 expression: expression PLUS term {

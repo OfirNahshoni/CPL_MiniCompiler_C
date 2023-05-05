@@ -1,6 +1,6 @@
 program MyProg1
 start
-decl int: x, y, z;
+decl int: x, y, z, a, i;
 real: w;
 string: q1a, s111;
 final int z1 = 5;
@@ -9,4 +9,7 @@ if (x > 5.5) then { x = 1; }
 else { x = 30; }
 y = 2;
 z = (1 - x) * (y + 5);
+in(a);
+foreach i = 0 till 5 with i = i + 1
+	out(i);
 end
