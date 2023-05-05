@@ -26,7 +26,6 @@
 %union {
 	Op myop;
 	Val val;
-	char mytype;
 }
 
 %token <val> NUM SENTENCE ID
@@ -35,8 +34,16 @@
 %token OUT PROGRAM REAL START STRING SWITCH THEN TILL WHILE WITH
 
 %type <val> list declarlist decl cdecl declarations
-%type <val> type expression factor term
+%type <val> type expression factor term bool_expr bool_factor bool_term
 
+
+%left OR
+%left AND
+%left PLUS
+%left MINUS
+%left MUL
+%left DIV
+%right ASSIGN
 
 %%
 program: PROGRAM ID {	
@@ -92,12 +99,12 @@ type: INT { current_type = 'i'; }
 | STRING { current_type = 's'; }
 ;
 
-cdecl: FINAL type ID ASSIGN NUM ';' cdecl {
+cdecl: FINAL type ID ASSIGN NUM ';' cdecl { // crule
 	// final int x = 2;
 	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
 	if (tempID) {
 		is_prog_valid = false;
-		yyerror("ID is already defined");
+		yyerror("ID is already defined from crule");
 	}
 	else {
 		if (current_type != $5.type) {
@@ -116,40 +123,71 @@ stmtlist: stmtlist stmt
 ;
 
 stmt: assign_stmt
-| ID ASSIGN SENTENCE ';'
-| control_stmt 
-| in_stmt 
+| ID ASSIGN SENTENCE ';' {
+	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
+	if (tempID == NULL){
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (tempID->type != 's') {
+			is_prog_valid = false;
+			yyerror("String must be assigned to string type only.");
+		}
+		tempID->is_init = true;
+	}
+}
+| control_stmt
+| in_stmt
 | out_stmt
 | stmt_block
+;
+
+in_stmt: IN '(' ID ')' ';' {
+	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
+	if (tempID == NULL) {
+		is_prog_valid = false;
+		yyerror("You must declate the type of ID to get input to it.");
+	}
+	else {
+		if (tempID->is_const) {
+			is_prog_valid = false;
+			yyerror("You cannot change value of const (final) variable.");
+		}
+	}
+	// MIPS - syscall of input ??
+}
 ;
 
 out_stmt: OUT '(' expression ')' ';'
 | OUT '(' SENTENCE ')' ';'
 ;
 
-in_stmt: IN '(' ID ')' ';'
-;
-
-// x = y+5.1;
-assign_stmt: ID ASSIGN expression ';' {
+assign_stmt: ID ASSIGN expression ';' { // 1
 	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
 	if (tempID == NULL) {
 		is_prog_valid = false;
 		yyerror("ID is not declared!");
 	}
 	else {
-		printf("\nleft.type=%c , right.type = %c\n", tempID->type, $3.type);
-		if (tempID->type != $3.type) {
-			if (tempID->type == 'i') {
+		if (tempID->is_const) {
+			is_prog_valid = false;
+			yyerror("Cannot assign to const (final) variable.");
+		}
+		if (tempID->type != $3.type) { // 'i' = 'r' // 'r' == 'i' // 'r' = 's'
+			if (tempID->type == 'i' || tempID->type == 's') {
 				is_prog_valid = false;
-				yyerror("Assign operation is not valid!");
+				yyerror("Assign operation is not valid.");
 			}
 		}
+		tempID->is_init = true;
 	}
 }
 ;
 
-control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt 
+control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt {
+
+}
 | WHILE '(' bool_expr ')' stmt_block
 | FOREACH ID ASSIGN NUM TILL NUM WITH step stmt 
 | FOREACH ID ASSIGN NUM TILL ID WITH step stmt
@@ -176,12 +214,20 @@ bool_expr: bool_expr OR bool_term
 ;
 
 bool_term: bool_term AND bool_factor
-| bool_factor
+| bool_factor {
+
+}
 ;
 
-bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factore */
-| expression RELOP expression
-;  
+// if (x > 5 and !(x * 2 > 6))
+// t0 = t1 + t2
+bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factore */ {
+	$$.res_bool_exp = !($3.res_bool_exp);
+}
+| expression RELOP expression {
+
+}
+;
 
 expression: expression PLUS term {
 	if ($1.type == 'r' || $3.type == 'r')
@@ -189,37 +235,67 @@ expression: expression PLUS term {
 	else
 		$$.type = 'i';
 }
-| term {
+| expression MINUS term {
+	if ($1.type == 'r' || $3.type == 'r')
+		$$.type = 'r';
+	else
+		$$.type = 'i';
+}
+| term { $$.type = $1.type; }
+;
+
+term: term MUL factor {
+	if ($1.type == 'r' || $3.type == 'r')
+		$$.type = 'r';
+	else
+		if ($1.type == 's' || $3.type == 's') {
+			is_prog_valid = false;
+			yyerror("Cannot do arithmetic operations on strings");
+		}
+		else
+			$$.type = $1.type;
+}
+| term DIV factor {
+	if ($1.type == 'r' || $3.type == 'r')
+		$$.type = 'r';
+	else
+		if ($1.type == 's' || $3.type == 's') {
+			is_prog_valid = false;
+			yyerror("Cannot do arithmetic operations on strings");
+		}
+		else
+			$$.type = $1.type;
+}
+| factor {
 	$$.type = $1.type;
 }
 ;
 
-term: term MUL factor
-| factor { // 3
-	$$.type = $1.type;
-	// printf("\n3) %c\n", $$.type);
+factor: '(' expression ')' {
+	$$.type = $2.type;
 }
-;
-
-factor: '(' expression ')'
-| ID { // 1
+| ID {
 	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
-	if (tempID == NULL) {
+	if (tempID == NULL) { // ERROR
 		is_prog_valid = false;
 		yyerror("ID is not declared!");
 	}
 	else {
-		if (tempID->type == 's') {
+		if (tempID->type == 's') { // ERROR
 			is_prog_valid = false;
 			yyerror("String should not used in arithmetic operations!");
 		}
-		else {
+		else if (tempID->is_init == false) { // ERROR
+			is_prog_valid = false;
+			yyerror("ID is not initialized.");
+		}
+		else { // OK
 			current_type = tempID->type;
 			$$.type = current_type;
 		}
 	}
 }
-| NUM { // 1
+| NUM {
 	current_type = $1.type; // 'r' or 'i'
 	$$.type = current_type;
 }

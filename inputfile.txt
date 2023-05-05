@@ -3,7 +3,10 @@ start
 decl int: x, y, z;
 real: w;
 string: q1a, s111;
-final int x = 5;
-y = 5;
-w = y + 4;
+final int z1 = 5;
+x = 5 * 6;
+if (x > 5.5) then { x = 1; }
+else { x = 30; }
+y = 2;
+z = (1 - x) * (y + 5);
 end
