@@ -81,7 +81,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 26 "parser.y"
+#line 27 "parser.y"
 
 	Op myop;
 	Val val;

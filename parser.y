@@ -12,6 +12,7 @@
 
 	// Global variables
 	symbol_table* SymbolTable;
+	symbol_table_entry* currentID;
 	bool is_prog_valid = true;
 	char current_type;
 
@@ -37,6 +38,7 @@
 %type <val> type expression factor term bool_expr bool_factor bool_term
 
 
+%left FOREACH
 %left OR
 %left AND
 %left PLUS
@@ -44,6 +46,7 @@
 %left MUL
 %left DIV
 %right ASSIGN
+
 
 %%
 program: PROGRAM ID {	
@@ -64,7 +67,12 @@ START declarations stmtlist END {
 ;
 
 declarations: DECL declarlist cdecl
-|
+| error declarlist cdecl {
+	is_prog_valid = false;
+	yyerror("decl keyword is missing");
+	yyerrok;
+}
+| 
 ;
 
 declarlist: declarlist decl
@@ -197,9 +205,10 @@ control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt {
 	symbol_table_entry* tempID = lookup(SymbolTable, $2.sval);
 	if (tempID == NULL) {
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Loop ID is not declared!");
 	}
 	else {
+		currentID = tempID;
 		if (tempID->is_const) {
 			is_prog_valid = false;
 			yyerror("Cannot assign value to const (final) variable.");
@@ -228,7 +237,30 @@ cases: CASE NUM ':' stmtlist BREAK ';' cases
 | DEFAULT ':' stmtlist
 ;
 
-step: ID ASSIGN ID PLUS NUM
+step: ID ASSIGN ID PLUS NUM {
+	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
+	if (tempID1 == NULL || tempID2 == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (strcmp(tempID1->name, tempID2->name)) { // not the same ID
+			is_prog_valid = false;
+			yyerror("Step ID must match the loop variable ID.");
+		}
+		else {
+			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
+				is_prog_valid = false;
+				yyerror("Cannot assign real value into integer.");
+			}
+			// else {
+				// Write mips here
+			// }
+		}
+	}
+
+}
 | ID ASSIGN ID MINUS NUM
 | ID ASSIGN ID MUL NUM
 | ID ASSIGN ID DIV NUM

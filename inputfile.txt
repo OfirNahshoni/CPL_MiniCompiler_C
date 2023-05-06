@@ -2,14 +2,14 @@ program MyProg1
 start
 decl int: x, y, z, a, i;
 real: w;
-string: q1a, s111;
+string: str1, str11;
 final int z1 = 5;
-x = 5 * 6;
-if (x > 5.5) then { x = 1; }
-else { x = 30; }
-y = 2;
+str1 = "ofir nahshoni";
+i = 5;
+if (i > 5.5) then { x = 1; }
+else { y = 2; }
 z = (1 - x) * (y + 5);
 in(a);
 foreach i = 0 till 5 with i = i + 1
-	out(i);
+	in(i);
 end
