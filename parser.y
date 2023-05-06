@@ -1,20 +1,18 @@
 %{
-	// Libraries to include
+	// Includes - libraries or files
 	#include <stdio.h>
 	#include <stdlib.h>
 	#include <string.h>
 	#include <assert.h>
 	#include <stdbool.h>
-
-	// Files to include
 	#include "symbol_table.h"
 	#include "my_structs.h"
 
 	// Global variables
 	symbol_table* SymbolTable;
-	symbol_table_entry* currentID;
-	bool is_prog_valid = true;
 	char current_type;
+	int current_reg = 0; // Current register index
+	bool is_prog_valid = true;
 
 	// External variables (from lex file)
 	extern int line;
@@ -22,7 +20,10 @@
 	extern int yylex(void);
 	extern FILE* yyin;
 
+	// Functions declarations
 	void yyerror(const char* msg);
+	int next_reg();
+	void reset_reg();
 %}
 %union {
 	Op myop;
@@ -37,7 +38,6 @@
 %type <val> list declarlist decl cdecl declarations
 %type <val> type expression factor term bool_expr bool_factor bool_term
 
-
 %left FOREACH
 %left OR
 %left AND
@@ -47,7 +47,6 @@
 %left DIV
 %right ASSIGN
 
-
 %%
 program: PROGRAM ID {	
 	// Create the symbol table
@@ -55,24 +54,25 @@ program: PROGRAM ID {
 }
 START declarations stmtlist END { 
 	if (is_prog_valid) {
-		printf("\nSuccess\n");
+		printf("\n--------------------------\nResult: ");
+		printf("Success\n");
 		print(SymbolTable);
 		free_symbol_table(SymbolTable);
 	}
 	else {
-		printf("\nNot Valid\n");
+		printf("\n--------------------------\nResult: ");
+		printf("Not Valid\n");
 		free_symbol_table(SymbolTable);
 	}
 }
+| error ID START declarations stmtlist END {
+	is_prog_valid = false;
+	yyerror("program keyword is missing");
+}
 ;
 
-declarations: DECL declarlist cdecl
-| error declarlist cdecl {
-	is_prog_valid = false;
-	yyerror("decl keyword is missing");
-	yyerrok;
-}
-| 
+declarations: DECL declarlist cdecl 
+|
 ;
 
 declarlist: declarlist decl
@@ -102,28 +102,31 @@ list: ID ',' list { // 2.1
 }
 ;
 
-type: INT { current_type = 'i'; }
-| REAL { current_type = 'r'; }
-| STRING { current_type = 's'; }
-;
-
-cdecl: FINAL type ID ASSIGN NUM ';' cdecl { // crule
-	// final int x = 2;
+cdecl: FINAL type ID ASSIGN NUM ';' cdecl {
 	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
 	if (tempID) {
 		is_prog_valid = false;
-		yyerror("ID is already defined from crule");
+		yyerror("ID is already defined.");
 	}
 	else {
-		if (current_type != $5.type) {
+		if (current_type == 's') {
 			is_prog_valid = false;
-			yyerror("Wrong value assigned");
+			yyerror("Cannot define const string variable.");
+		}
+		else if (current_type == 'i' && $5.type == 'r') {
+			is_prog_valid = false;
+			yyerror("Cannot assign real value to int.");
 		}
 		else
 			add_attribute(SymbolTable, $3.sval, current_type, true, true);
 	}
 }
 |
+;
+
+type: INT { current_type = 'i'; }
+| REAL { current_type = 'r'; }
+| STRING { current_type = 's'; }
 ;
 
 stmtlist: stmtlist stmt  
@@ -194,13 +197,8 @@ assign_stmt: ID ASSIGN expression ';' { // 1
 }
 ;
 
-control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt {
-	// bool_expr true -> jump ?
-}
-| WHILE '(' bool_expr ')' stmt_block {
-	// j loop
-	// bne 
-}
+control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt
+| WHILE '(' bool_expr ')' stmt_block
 | FOREACH ID ASSIGN NUM TILL NUM WITH step stmt {
 	symbol_table_entry* tempID = lookup(SymbolTable, $2.sval);
 	if (tempID == NULL) {
@@ -208,7 +206,6 @@ control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt {
 		yyerror("Loop ID is not declared!");
 	}
 	else {
-		currentID = tempID;
 		if (tempID->is_const) {
 			is_prog_valid = false;
 			yyerror("Cannot assign value to const (final) variable.");
@@ -223,18 +220,69 @@ control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt {
 		}
 	}
 } 
-| FOREACH ID ASSIGN NUM TILL ID WITH step stmt
+| FOREACH ID ASSIGN NUM TILL ID WITH step stmt {
+	symbol_table_entry* tempID1 = lookup(SymbolTable, $2.sval);
+	symbol_table_entry* tempID2 = lookup(SymbolTable, $6.sval);
+	if (tempID1 == NULL) {
+		is_prog_valid = false;
+		yyerror("Loop ID is not declared!");
+	}
+	else if (tempID2 == NULL) {
+		is_prog_valid = false;
+		yyerror("Up barrier ID is not declared!");
+	}
+	else {
+		if (tempID1->is_const) {
+			is_prog_valid = false;
+			yyerror("Cannot assign value to const (final) variable.");
+		}
+		else {
+			if ($2.type == 'i' && $4.type == 'r') {
+				is_prog_valid = false;
+				yyerror("Cannot assign real value to int.");
+			}
+			else if (tempID2->is_init == false) {
+				is_prog_valid = false;
+				yyerror("Up barrier loop ID is not initialized.");
+			}
+			else
+				tempID1->is_init = true;
+		}
+	}
+}
 | _switch
 ;
 
 stmt_block: '{' stmtlist '}'
 ;
 
-_switch: SWITCH '(' ID ')' '{' cases '}'
+_switch: SWITCH '(' ID ')' '{' cases '}' {
+	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
+	if (tempID == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (tempID->is_init == false) {
+			is_prog_valid = false;
+			yyerror("Switch ID is not initialized.");
+		}
+		else if (tempID->type != current_type) {
+			is_prog_valid = false;
+			yyerror("Type of case ID is not the same as NUM.");
+		}
+	}
+}
 ;
 
-cases: CASE NUM ':' stmtlist BREAK ';' cases
+cases: CASE NUM ':' stmtlist BREAK ';' cases {
+	current_type = $2.type;
+}
 | DEFAULT ':' stmtlist
+| {
+	is_prog_valid = false;
+	yyerror("default keyword is missing.");
+}
 ;
 
 step: ID ASSIGN ID PLUS NUM {
@@ -245,25 +293,90 @@ step: ID ASSIGN ID PLUS NUM {
 		yyerror("ID is not declared!");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name)) { // not the same ID
+		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
 			is_prog_valid = false;
 			yyerror("Step ID must match the loop variable ID.");
 		}
-		else {
+		else { // same type
+			// wrong assign op - assign real to int
 			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
 				is_prog_valid = false;
 				yyerror("Cannot assign real value into integer.");
 			}
-			// else {
-				// Write mips here
-			// }
+			else
+				tempID1->is_init = true;
 		}
 	}
-
 }
-| ID ASSIGN ID MINUS NUM
-| ID ASSIGN ID MUL NUM
-| ID ASSIGN ID DIV NUM
+| ID ASSIGN ID MINUS NUM {
+	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
+	if (tempID1 == NULL || tempID2 == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+			is_prog_valid = false;
+			yyerror("Step ID must match the loop variable ID.");
+		}
+		else { // same type
+			// wrong assign op - assign real to int
+			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
+				is_prog_valid = false;
+				yyerror("Cannot assign real value into integer.");
+			}
+			else
+				tempID1->is_init = true;
+		}
+	}
+}
+| ID ASSIGN ID MUL NUM {
+	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
+	if (tempID1 == NULL || tempID2 == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+			is_prog_valid = false;
+			yyerror("Step ID must match the loop variable ID.");
+		}
+		else { // same type
+			// wrong assign op - assign real to int
+			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
+				is_prog_valid = false;
+				yyerror("Cannot assign real value into integer.");
+			}
+			else
+				tempID1->is_init = true;
+		}
+	}
+}
+| ID ASSIGN ID DIV NUM {
+	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
+	if (tempID1 == NULL || tempID2 == NULL) {
+		is_prog_valid = false;
+		yyerror("ID is not declared!");
+	}
+	else {
+		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+			is_prog_valid = false;
+			yyerror("Step ID must match the loop variable ID.");
+		}
+		else { // same type
+			// wrong assign op - assign real to int
+			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
+				is_prog_valid = false;
+				yyerror("Cannot assign real value into integer.");
+			}
+			else
+				tempID1->is_init = true;
+		}
+	}
+}
 ;
 
 bool_expr: bool_expr OR bool_term
@@ -372,9 +485,19 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-// Function to add error to the errors files
-void yyerror(const char* msg)
-{
-	// Print errors to the screen
+/* Functions Implementations */
+void yyerror(const char* msg) 
+{ // Function to print the error
 	fprintf(stderr, "\nError (line %d, col %d): %s\n", line-1, col, msg);
+}
+
+int next_reg()
+{ // Function to get the next available register index
+	current_reg++;
+	return current_reg - 1;
+}
+
+void reset_reg()
+{ // Function to reset the register index
+	current_reg = 0;
 }
