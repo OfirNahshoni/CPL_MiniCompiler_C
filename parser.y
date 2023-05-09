@@ -64,10 +64,6 @@ START declarations stmtlist END {
 		free_symbol_table(SymbolTable);
 	}
 }
-| error ID START declarations stmtlist END {
-	is_prog_valid = false;
-	yyerror("program keyword is missing");
-}
 ;
 
 declarations: DECL declarlist cdecl 
