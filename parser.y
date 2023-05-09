@@ -1,5 +1,5 @@
 %{
-	// Includes - libraries or files
+	// Includes
 	#include <stdio.h>
 	#include <stdlib.h>
 	#include <string.h>
@@ -7,11 +7,11 @@
 	#include <stdbool.h>
 	#include "symbol_table.h"
 	#include "my_structs.h"
+	#include "mips_trans.h"
 
 	// Global variables
 	symbol_table* SymbolTable;
 	char current_type;
-	int current_reg = 0; // Current register index
 	bool is_prog_valid = true;
 
 	// External variables (from lex file)
@@ -22,8 +22,7 @@
 
 	// Functions declarations
 	void yyerror(const char* msg);
-	int next_reg();
-	void reset_reg();
+	
 %}
 %union {
 	Op myop;
@@ -285,96 +284,65 @@ cases: CASE NUM ':' stmtlist BREAK ';' cases {
 }
 ;
 
+// foreach i = 0 till 7 with i = i + 1
 step: ID ASSIGN ID PLUS NUM {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+	if (strcmp($1.sval, $3.sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 }
 | ID ASSIGN ID MINUS NUM {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+	if (strcmp($1.sval, $3.sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 }
 | ID ASSIGN ID MUL NUM {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+	if (strcmp($1.sval, $3.sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 }
-| ID ASSIGN ID DIV NUM {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, $3.sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+| ID ASSIGN ID DIV NUM { // i = i / 4
+	if (strcmp($1.sval, $3.sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, $1.sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || $5.type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 }
 ;
@@ -389,9 +357,8 @@ bool_term: bool_term AND bool_factor
 }
 ;
 
-bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factore */ {
+bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factor */ {
 	$$.res_bool_exp = !($3.res_bool_exp);
-	// bne - mips
 }
 | expression RELOP expression
 ;
@@ -489,15 +456,4 @@ int main(int argc, char* argv[])
 void yyerror(const char* msg) 
 { // Function to print the error
 	fprintf(stderr, "\nError (line %d, col %d): %s\n", line-1, col, msg);
-}
-
-int next_reg()
-{ // Function to get the next available register index
-	current_reg++;
-	return current_reg - 1;
-}
-
-void reset_reg()
-{ // Function to reset the register index
-	current_reg = 0;
 }

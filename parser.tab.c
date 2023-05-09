@@ -70,7 +70,7 @@
 /* Line 189 of yacc.c  */
 #line 1 "parser.y"
 
-	// Includes - libraries or files
+	// Includes
 	#include <stdio.h>
 	#include <stdlib.h>
 	#include <string.h>
@@ -78,11 +78,11 @@
 	#include <stdbool.h>
 	#include "symbol_table.h"
 	#include "my_structs.h"
+	#include "mips_trans.h"
 
 	// Global variables
 	symbol_table* SymbolTable;
 	char current_type;
-	int current_reg = 0; // Current register index
 	bool is_prog_valid = true;
 
 	// External variables (from lex file)
@@ -93,12 +93,11 @@
 
 	// Functions declarations
 	void yyerror(const char* msg);
-	int next_reg();
-	void reset_reg();
+	
 
 
 /* Line 189 of yacc.c  */
-#line 102 "parser.tab.c"
+#line 101 "parser.tab.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -167,7 +166,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 28 "parser.y"
+#line 27 "parser.y"
 
 	Op myop;
 	Val val;
@@ -175,7 +174,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 179 "parser.tab.c"
+#line 178 "parser.tab.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -187,7 +186,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 191 "parser.tab.c"
+#line 190 "parser.tab.c"
 
 #ifdef short
 # undef short
@@ -499,12 +498,12 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,    51,    51,    51,    68,    74,    75,    78,    79,    82,
-      85,    94,   105,   124,   127,   128,   129,   132,   133,   136,
-     137,   151,   152,   153,   154,   157,   174,   175,   178,   200,
-     201,   202,   223,   253,   256,   259,   278,   281,   282,   288,
-     311,   334,   357,   382,   383,   386,   387,   392,   396,   399,
-     405,   411,   414,   425,   436,   441,   444,   465
+       0,    50,    50,    50,    67,    73,    74,    77,    78,    81,
+      84,    93,   104,   123,   126,   127,   128,   131,   132,   135,
+     136,   150,   151,   152,   153,   156,   173,   174,   177,   199,
+     200,   201,   222,   252,   255,   258,   277,   280,   281,   288,
+     303,   318,   333,   350,   351,   354,   355,   360,   363,   366,
+     372,   378,   381,   392,   403,   408,   411,   432
 };
 #endif
 
@@ -1503,7 +1502,7 @@ yyreduce:
         case 2:
 
 /* Line 1455 of yacc.c  */
-#line 51 "parser.y"
+#line 50 "parser.y"
     {	
 	// Create the symbol table
 	SymbolTable = create_symbol_table(2);
@@ -1513,7 +1512,7 @@ yyreduce:
   case 3:
 
 /* Line 1455 of yacc.c  */
-#line 55 "parser.y"
+#line 54 "parser.y"
     { 
 	if (is_prog_valid) {
 		printf("\n--------------------------\nResult: ");
@@ -1532,7 +1531,7 @@ yyreduce:
   case 4:
 
 /* Line 1455 of yacc.c  */
-#line 68 "parser.y"
+#line 67 "parser.y"
     {
 	is_prog_valid = false;
 	yyerror("program keyword is missing");
@@ -1542,14 +1541,14 @@ yyreduce:
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 82 "parser.y"
+#line 81 "parser.y"
     { (yyvsp[(3) - (4)].val).type = current_type; ;}
     break;
 
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 85 "parser.y"
+#line 84 "parser.y"
     { // 2.1
 	symbol_table_entry* tempSymID = lookup(SymbolTable, (yyvsp[(1) - (3)].val).sval);
 	if (tempSymID) {
@@ -1564,7 +1563,7 @@ yyreduce:
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 94 "parser.y"
+#line 93 "parser.y"
     { // 2.2
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(1) - (1)].val).sval);
 	if (tempID) {
@@ -1579,7 +1578,7 @@ yyreduce:
   case 12:
 
 /* Line 1455 of yacc.c  */
-#line 105 "parser.y"
+#line 104 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(3) - (7)].val).sval);
 	if (tempID) {
@@ -1604,28 +1603,28 @@ yyreduce:
   case 14:
 
 /* Line 1455 of yacc.c  */
-#line 127 "parser.y"
+#line 126 "parser.y"
     { current_type = 'i'; ;}
     break;
 
   case 15:
 
 /* Line 1455 of yacc.c  */
-#line 128 "parser.y"
+#line 127 "parser.y"
     { current_type = 'r'; ;}
     break;
 
   case 16:
 
 /* Line 1455 of yacc.c  */
-#line 129 "parser.y"
+#line 128 "parser.y"
     { current_type = 's'; ;}
     break;
 
   case 20:
 
 /* Line 1455 of yacc.c  */
-#line 137 "parser.y"
+#line 136 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(1) - (4)].val).sval);
 	if (tempID == NULL){
@@ -1645,7 +1644,7 @@ yyreduce:
   case 25:
 
 /* Line 1455 of yacc.c  */
-#line 157 "parser.y"
+#line 156 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(3) - (5)].val).sval);
 	if (tempID == NULL) {
@@ -1666,7 +1665,7 @@ yyreduce:
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 178 "parser.y"
+#line 177 "parser.y"
     { // 1
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(1) - (4)].val).sval);
 	if (tempID == NULL) {
@@ -1692,7 +1691,7 @@ yyreduce:
   case 31:
 
 /* Line 1455 of yacc.c  */
-#line 202 "parser.y"
+#line 201 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(2) - (9)].val).sval);
 	if (tempID == NULL) {
@@ -1719,7 +1718,7 @@ yyreduce:
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 223 "parser.y"
+#line 222 "parser.y"
     {
 	symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(2) - (9)].val).sval);
 	symbol_table_entry* tempID2 = lookup(SymbolTable, (yyvsp[(6) - (9)].val).sval);
@@ -1755,7 +1754,7 @@ yyreduce:
   case 35:
 
 /* Line 1455 of yacc.c  */
-#line 259 "parser.y"
+#line 258 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(3) - (7)].val).sval);
 	if (tempID == NULL) {
@@ -1778,7 +1777,7 @@ yyreduce:
   case 36:
 
 /* Line 1455 of yacc.c  */
-#line 278 "parser.y"
+#line 277 "parser.y"
     {
 	current_type = (yyvsp[(2) - (7)].val).type;
 ;}
@@ -1787,7 +1786,7 @@ yyreduce:
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 282 "parser.y"
+#line 281 "parser.y"
     {
 	is_prog_valid = false;
 	yyerror("default keyword is missing.");
@@ -1799,26 +1798,18 @@ yyreduce:
 /* Line 1455 of yacc.c  */
 #line 288 "parser.y"
     {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, (yyvsp[(3) - (5)].val).sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || (yyvsp[(5) - (5)].val).type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 ;}
     break;
@@ -1826,28 +1817,20 @@ yyreduce:
   case 40:
 
 /* Line 1455 of yacc.c  */
-#line 311 "parser.y"
+#line 303 "parser.y"
     {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, (yyvsp[(3) - (5)].val).sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || (yyvsp[(5) - (5)].val).type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 ;}
     break;
@@ -1855,28 +1838,20 @@ yyreduce:
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 334 "parser.y"
+#line 318 "parser.y"
     {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, (yyvsp[(3) - (5)].val).sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || (yyvsp[(5) - (5)].val).type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 ;}
     break;
@@ -1884,28 +1859,20 @@ yyreduce:
   case 42:
 
 /* Line 1455 of yacc.c  */
-#line 357 "parser.y"
-    {
-	symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
-	symbol_table_entry* tempID2 = lookup(SymbolTable, (yyvsp[(3) - (5)].val).sval);
-	if (tempID1 == NULL || tempID2 == NULL) {
+#line 333 "parser.y"
+    { // i = i / 4
+	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
-		yyerror("ID is not declared!");
+		yyerror("Danger to Infinite loop !! Step ID must match the loop variable ID.");
 	}
 	else {
-		if (strcmp(tempID1->name, tempID2->name) != 0) { // not the same ID
+		symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(1) - (5)].val).sval);
+		if (tempID1 == NULL) {
 			is_prog_valid = false;
-			yyerror("Step ID must match the loop variable ID.");
+			yyerror("ID is not declared!");
 		}
-		else { // same type
-			// wrong assign op - assign real to int
-			if (tempID1->type == 'i' && (tempID2->type == 'r' || (yyvsp[(5) - (5)].val).type == 'r')) {
-				is_prog_valid = false;
-				yyerror("Cannot assign real value into integer.");
-			}
-			else
-				tempID1->is_init = true;
-		}
+		else
+			tempID1->is_init = true;
 	}
 ;}
     break;
@@ -1913,7 +1880,7 @@ yyreduce:
   case 46:
 
 /* Line 1455 of yacc.c  */
-#line 387 "parser.y"
+#line 355 "parser.y"
     {
 	
 ;}
@@ -1922,17 +1889,16 @@ yyreduce:
   case 47:
 
 /* Line 1455 of yacc.c  */
-#line 392 "parser.y"
+#line 360 "parser.y"
     {
 	(yyval.val).res_bool_exp = !((yyvsp[(3) - (4)].val).res_bool_exp);
-	// bne - mips
 ;}
     break;
 
   case 49:
 
 /* Line 1455 of yacc.c  */
-#line 399 "parser.y"
+#line 366 "parser.y"
     {
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
@@ -1944,7 +1910,7 @@ yyreduce:
   case 50:
 
 /* Line 1455 of yacc.c  */
-#line 405 "parser.y"
+#line 372 "parser.y"
     {
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
@@ -1956,14 +1922,14 @@ yyreduce:
   case 51:
 
 /* Line 1455 of yacc.c  */
-#line 411 "parser.y"
+#line 378 "parser.y"
     { (yyval.val).type = (yyvsp[(1) - (1)].val).type; ;}
     break;
 
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 414 "parser.y"
+#line 381 "parser.y"
     {
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
@@ -1980,7 +1946,7 @@ yyreduce:
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 425 "parser.y"
+#line 392 "parser.y"
     {
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
@@ -1997,7 +1963,7 @@ yyreduce:
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 436 "parser.y"
+#line 403 "parser.y"
     {
 	(yyval.val).type = (yyvsp[(1) - (1)].val).type;
 ;}
@@ -2006,7 +1972,7 @@ yyreduce:
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 441 "parser.y"
+#line 408 "parser.y"
     {
 	(yyval.val).type = (yyvsp[(2) - (3)].val).type;
 ;}
@@ -2015,7 +1981,7 @@ yyreduce:
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 444 "parser.y"
+#line 411 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(1) - (1)].val).sval);
 	if (tempID == NULL) { // ERROR
@@ -2042,7 +2008,7 @@ yyreduce:
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 465 "parser.y"
+#line 432 "parser.y"
     {
 	current_type = (yyvsp[(1) - (1)].val).type; // 'r' or 'i'
 	(yyval.val).type = current_type;
@@ -2052,7 +2018,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 2056 "parser.tab.c"
+#line 2022 "parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2264,7 +2230,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 471 "parser.y"
+#line 438 "parser.y"
 
 // Main function
 int main(int argc, char* argv[])
@@ -2286,15 +2252,4 @@ int main(int argc, char* argv[])
 void yyerror(const char* msg) 
 { // Function to print the error
 	fprintf(stderr, "\nError (line %d, col %d): %s\n", line-1, col, msg);
-}
-
-int next_reg()
-{ // Function to get the next available register index
-	current_reg++;
-	return current_reg - 1;
-}
-
-void reset_reg()
-{ // Function to reset the register index
-	current_reg = 0;
 }
