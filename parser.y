@@ -19,6 +19,7 @@
 	extern int col;
 	extern int yylex(void);
 	extern FILE* yyin;
+	FILE* mips_file;
 
 	// Functions declarations
 	void yyerror(const char* msg);
@@ -53,6 +54,8 @@ program: PROGRAM ID {
 }
 START declarations stmtlist END { 
 	if (is_prog_valid) {
+		// Header of mips_file
+		generate_mips_header(mips_file);
 		printf("\n--------------------------\nResult: ");
 		printf("Success\n");
 		print(SymbolTable);
@@ -438,12 +441,18 @@ int main(int argc, char* argv[])
 	yyin = fopen(argv[1], "r");
 	assert(yyin);
 
+	// Open mips file for write mode
+    mips_file = fopen("mips_res.asm", "a");
+    assert(mips_file);
+
 	printf("%d) ", line++);
 
 	do {
 		yyparse();
 	} while(!feof(yyin));
 	fclose(yyin);
+
+	fclose(mips_file);
 
 	return 0;
 }

@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "mips_trans.h": "c",
+        "stdbool.h": "c"
+    }
+}
