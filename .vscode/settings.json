@@ -1,6 +1,10 @@
 {
     "files.associations": {
         "mips_trans.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "string.h": "c",
+        "stdio.h": "c",
+        "assert.h": "c",
+        "stdlib.h": "c"
     }
 }

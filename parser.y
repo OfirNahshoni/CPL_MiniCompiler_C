@@ -35,7 +35,11 @@
 %token BREAK CASE DECL DEFAULT ELSE END FINAL FOREACH IF IN INT
 %token OUT PROGRAM REAL START STRING SWITCH THEN TILL WHILE WITH
 
-%type <val> list declarlist decl cdecl declarations
+%type <val> list
+%type <val> declarlist
+%type <val> decl
+%type <val> cdecl
+%type <val> declarations
 %type <val> type expression factor term bool_expr bool_factor bool_term
 
 %left FOREACH
@@ -51,11 +55,13 @@
 program: PROGRAM ID {	
 	// Create the symbol table
 	SymbolTable = create_symbol_table(2);
+	// Header of mips_file
+	generate_mips_header(mips_file);
 }
 START declarations stmtlist END { 
 	if (is_prog_valid) {
-		// Header of mips_file
-		generate_mips_header(mips_file);
+		// Free stack of mips
+		generate_mips_footer(mips_file);
 		printf("\n--------------------------\nResult: ");
 		printf("Success\n");
 		print(SymbolTable);
@@ -69,7 +75,7 @@ START declarations stmtlist END {
 }
 ;
 
-declarations: DECL declarlist cdecl 
+declarations: DECL declarlist cdecl { generate_mips_body(mips_file); }
 |
 ;
 
@@ -77,30 +83,38 @@ declarlist: declarlist decl
 | decl
 ;
 
-decl: type ':' list ';' { $3.type = current_type; }
-;
+decl: type { current_type = $1.type; } ':' list ';' { // r1 
+	// printf("\nr1\n");
+}
 
-list: ID ',' list { // 2.1
-	symbol_table_entry* tempSymID = lookup(SymbolTable, $1.sval);
-	if (tempSymID) {
+list: ID ',' list { // r2.1
+	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
+	if (tempID) {
 		is_prog_valid = false;
 		yyerror("ID is already defined");
 	}
-	else
+	else {
+		// printf("\nr2.1\n");
 		add_attribute(SymbolTable, $1.sval, current_type, false, false);
+		// translate_declar(mips_file, current_type, tempID->name, "0");
+	}
 }
-| ID { // 2.2
+| ID { // r2.2
 	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
 	if (tempID) {
 		is_prog_valid = false;
 		yyerror("ID already defined");
 	}
-	else
+	else {
+		// printf("\nr2.2\n");
 		add_attribute(SymbolTable, $1.sval, current_type, false, false);
+		// translate_declar(mips_file, current_type, tempID->name, "0");
+	}
 }
 ;
 
 cdecl: FINAL type ID ASSIGN NUM ';' cdecl {
+	current_type = $2.type;
 	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
 	if (tempID) {
 		is_prog_valid = false;
@@ -111,20 +125,22 @@ cdecl: FINAL type ID ASSIGN NUM ';' cdecl {
 			is_prog_valid = false;
 			yyerror("Cannot define const string variable.");
 		}
-		else if (current_type == 'i' && $5.type == 'r') {
+		else if ($2.type == 'i' && $5.type == 'r') {
 			is_prog_valid = false;
 			yyerror("Cannot assign real value to int.");
 		}
-		else
-			add_attribute(SymbolTable, $3.sval, current_type, true, true);
+		else {
+			add_attribute(SymbolTable, $3.sval, $2.type, true, true);
+			// translate_declar(mips_file, current_type, tempID->name, $5.sval);
+		}
 	}
 }
 |
 ;
 
-type: INT { current_type = 'i'; }
-| REAL { current_type = 'r'; }
-| STRING { current_type = 's'; }
+type: INT { $$.type = 'i'; }
+| REAL { $$.type = 'r'; }
+| STRING { $$.type = 's'; }
 ;
 
 stmtlist: stmtlist stmt  
@@ -442,7 +458,7 @@ int main(int argc, char* argv[])
 	assert(yyin);
 
 	// Open mips file for write mode
-    mips_file = fopen("mips_res.asm", "a");
+    mips_file = fopen("mips_res.asm", "w");
     assert(mips_file);
 
 	printf("%d) ", line++);
@@ -450,8 +466,8 @@ int main(int argc, char* argv[])
 	do {
 		yyparse();
 	} while(!feof(yyin));
-	fclose(yyin);
 
+	fclose(yyin);
 	fclose(mips_file);
 
 	return 0;
