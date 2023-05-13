@@ -1,27 +1,10 @@
 program MyProg1
 start
-decl int: x, y, z, a, n, i;
-real: w;
-string: str1, str11;
-final real z1 = 11;
-final real z11 = 11;
-final int z111 = 5;
-/* final string strw = 76; */
-str1 = "ofir nahshoni";
-in(i);
-if (i > 5.5) then { x = 1; }
-else { y = 2; }
-z = (1 - x) * (y + 5);
-foreach n = 0 till 5 with n = n - 1
-	out(n);
-in(a);
-switch (a)
-{
-	case 1:
-		x = 1;
-		y = 2;
-		break;
-default:
-	x = 5 * 11;
-}
+decl int: x1, x2;
+real: w1, w2;
+string: str1, str2;
+final real z1 = 11.2;
+final int z2 = 5;
+str1 = "ofir new";
+out("OFIRRRRR");
 end

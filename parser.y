@@ -60,22 +60,29 @@ program: PROGRAM ID {
 }
 START declarations stmtlist END { 
 	if (is_prog_valid) {
-		// Free stack of mips
-		generate_mips_footer(mips_file);
+		// CMD
 		printf("\n--------------------------\nResult: ");
 		printf("Success\n");
 		print(SymbolTable);
 		free_symbol_table(SymbolTable);
+
+		// Terminate program - mips
+		generate_mips_footer(mips_file);
 	}
 	else {
+		// CMD
 		printf("\n--------------------------\nResult: ");
 		printf("Not Valid\n");
 		free_symbol_table(SymbolTable);
 	}
 }
 ;
-
-declarations: DECL declarlist cdecl { generate_mips_body(mips_file); }
+	
+declarations: DECL { 
+		generate_mips_data_section(mips_file); // .data
+	} declarlist cdecl { 
+			generate_mips_text_section(mips_file); // .text
+		}
 |
 ;
 
@@ -96,7 +103,7 @@ list: ID ',' list { // r2.1
 	else {
 		// printf("\nr2.1\n");
 		add_attribute(SymbolTable, $1.sval, current_type, false, false);
-		// translate_declar(mips_file, current_type, tempID->name, "0");
+		translate_declar(mips_file, current_type, $1.sval, "0");
 	}
 }
 | ID { // r2.2
@@ -108,7 +115,7 @@ list: ID ',' list { // r2.1
 	else {
 		// printf("\nr2.2\n");
 		add_attribute(SymbolTable, $1.sval, current_type, false, false);
-		// translate_declar(mips_file, current_type, tempID->name, "0");
+		translate_declar(mips_file, current_type, $1.sval, "0");
 	}
 }
 ;
@@ -131,7 +138,7 @@ cdecl: FINAL type ID ASSIGN NUM ';' cdecl {
 		}
 		else {
 			add_attribute(SymbolTable, $3.sval, $2.type, true, true);
-			// translate_declar(mips_file, current_type, tempID->name, $5.sval);
+			translate_declar(mips_file, current_type, $3.sval, $5.sval);
 		}
 	}
 }
@@ -159,7 +166,12 @@ stmt: assign_stmt
 			is_prog_valid = false;
 			yyerror("String must be assigned to string type only.");
 		}
-		tempID->is_init = true;
+		else {
+			tempID->is_init = true;
+			// mips
+			translate_assignment(mips_file, tempID->name, $3.sval, tempID->type);
+		}
+
 	}
 }
 | control_stmt
@@ -172,21 +184,28 @@ in_stmt: IN '(' ID ')' ';' {
 	symbol_table_entry* tempID = lookup(SymbolTable, $3.sval);
 	if (tempID == NULL) {
 		is_prog_valid = false;
-		yyerror("You must declar the type of ID to get input to it.");
+		yyerror("Cannot execute input method, ID is not declared.");
 	}
 	else {
 		if (tempID->is_const) {
 			is_prog_valid = false;
 			yyerror("You cannot change value of const (final) variable.");
 		}
-		else
+		else {
 			tempID->is_init = true;
+			// mips - input
+			translate_input(mips_file, tempID->name, tempID->type);
+		}
 	}
 }
 ;
 
-out_stmt: OUT '(' expression ')' ';'
-| OUT '(' SENTENCE ')' ';'
+out_stmt: OUT '(' expression ')' ';' {
+	translate_output(mips_file, $3.sval, $3.type);
+}
+| OUT '(' SENTENCE ')' ';' {
+	translate_output(mips_file, $3.sval, $3.type);
+}
 ;
 
 assign_stmt: ID ASSIGN expression ';' { // 1
@@ -206,14 +225,18 @@ assign_stmt: ID ASSIGN expression ';' { // 1
 				yyerror("Assign operation is not valid.");
 			}
 		}
-		tempID->is_init = true;
+		else {
+			tempID->is_init = true;
+			// mips
+			translate_assignment(mips_file, tempID->name, $3.sval, tempID->type);
+		}
 	}
 }
 ;
 
 control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt
 | WHILE '(' bool_expr ')' stmt_block
-| FOREACH ID ASSIGN NUM TILL NUM WITH step stmt {
+| FOREACH ID ASSIGN NUM TILL NUM WITH step {
 	symbol_table_entry* tempID = lookup(SymbolTable, $2.sval);
 	if (tempID == NULL) {
 		is_prog_valid = false;
@@ -233,8 +256,8 @@ control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt
 				tempID->is_init = true;
 		}
 	}
-} 
-| FOREACH ID ASSIGN NUM TILL ID WITH step stmt {
+} stmt
+| FOREACH ID ASSIGN NUM TILL ID WITH step {
 	symbol_table_entry* tempID1 = lookup(SymbolTable, $2.sval);
 	symbol_table_entry* tempID2 = lookup(SymbolTable, $6.sval);
 	if (tempID1 == NULL) {
@@ -263,7 +286,7 @@ control_stmt: IF '(' bool_expr ')' THEN stmt ELSE stmt
 				tempID1->is_init = true;
 		}
 	}
-}
+} stmt
 | _switch
 ;
 
@@ -367,14 +390,10 @@ bool_expr: bool_expr OR bool_term
 ;
 
 bool_term: bool_term AND bool_factor
-| bool_factor {
-	
-}
+| bool_factor
 ;
 
-bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factor */ {
-	$$.res_bool_exp = !($3.res_bool_exp);
-}
+bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factor */
 | expression RELOP expression
 ;
 
@@ -390,7 +409,7 @@ expression: expression PLUS term {
 	else
 		$$.type = 'i';
 }
-| term { $$.type = $1.type; }
+| term { $$.type = $1.type; $$.sval = $1.sval; }
 ;
 
 term: term MUL factor {
@@ -415,9 +434,7 @@ term: term MUL factor {
 		else
 			$$.type = $1.type;
 }
-| factor {
-	$$.type = $1.type;
-}
+| factor {$$.type = $1.type; $$.sval = $1.sval;}
 ;
 
 factor: '(' expression ')' {
@@ -441,12 +458,14 @@ factor: '(' expression ')' {
 		else { // OK
 			current_type = tempID->type;
 			$$.type = current_type;
+			$$.sval = $1.sval;
 		}
 	}
 }
 | NUM {
 	current_type = $1.type; // 'r' or 'i'
 	$$.type = current_type;
+	$$.sval = $1.sval;
 }
 ;
 
