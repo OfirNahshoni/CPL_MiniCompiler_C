@@ -16,40 +16,45 @@
 	# Main program
 	.global main
 	main:
-		.data
-			str1_new: .asciiz "ofir new"
-		.text
-			# Load address of new string into $t0
-			la $t0, str1_new
-			# Load address of destination string into $t1
-			la $t1, str1
-		str_copy_loop_str1:
-			# Load byte from new string into $t2
-			lb $t2, 0($t0)
-			# Store byte to destination string
-			sb $t2, 0($t1)
-			# If zero byte (end of string) is encountered, exit the loop
-			beqz $t2, str_copy_end_str1
-			# Increment address of new string
-			addiu $t0, $t0, 1
-			# Increment address of destination string
-			addiu $t1, $t1, 1
-			j str_copy_loop_str1
-		str_copy_end_str1:
+		# Load address of id into a register
+		la $at, x1
+		# Load integer into temp reg
+		li $t0, 2
+		# Store temp reg's value into id
+		sw $t0, 0($at)
+		# Get input from user
+		# Load system call to read an integer
+		li $v0, 5
+		syscall
+		# Store input value in x1
+		la $at, x1
+		sw $v0, 0($at)
+		# Get input from user
+		# Load system call to read floating point number
+		li $v0, 6
+		syscall
+		# Store input value in w1
+		la $at, w1
+		s.s $f0, 0($at)
 		# Print output
-		.data
-			str_to_print: .asciiz "OFIRRRRR"
-		.text
-			# Load address of output string into $a0
-			la $a0, str_to_print
-			# Load system call to print a string
-			li $v0, 4
-			syscall
-	# Free the Stack
-	lw $ra, -4($fp)
-	addi $sp, $sp, 4
-	lw $fp, 0($sp)
-	jr $ra
-	# Load system call to terminate the program
-	li $v0, 10
-	syscall
+		# Load address of output string into $a0
+		la $a0, "Ofir"
+		# Load system call to print a string
+		li $v0, 4
+		syscall
+		# Print output
+		# Load address of integer value into $at
+		la $at, x1
+		# Load value from memory into $a0
+		lw $a0, 0($at)
+		# Load system call to print an integer
+		li $v0, 1
+		syscall
+		# Free the Stack
+		lw $ra, -4($fp)
+		addi $sp, $sp, 4
+		lw $fp, 0($sp)
+		jr $ra
+		# Load system call to terminate the program
+		li $v0, 10
+		syscall

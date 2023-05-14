@@ -5,6 +5,9 @@ real: w1, w2;
 string: str1, str2;
 final real z1 = 11.2;
 final int z2 = 5;
-str1 = "ofir new";
-out("OFIRRRRR");
+x1 = 2;
+in(x1);
+in(w1);
+out("Ofir");
+out(x1);
 end

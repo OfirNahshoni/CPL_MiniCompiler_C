@@ -168,8 +168,12 @@ stmt: assign_stmt
 		}
 		else {
 			tempID->is_init = true;
+			// Generate reg_name
+			char* reg_name = generate_reg_name('s');
 			// mips
-			translate_assignment(mips_file, tempID->name, $3.sval, tempID->type);
+			translate_assignment(mips_file, tempID->name, $3.sval, 's', reg_name);
+			// free register name
+			free(reg_name);
 		}
 
 	}
@@ -200,10 +204,10 @@ in_stmt: IN '(' ID ')' ';' {
 }
 ;
 
-out_stmt: OUT '(' expression ')' ';' {
+out_stmt: OUT '(' expression ')' ';' { // int or real
 	translate_output(mips_file, $3.sval, $3.type);
 }
-| OUT '(' SENTENCE ')' ';' {
+| OUT '(' SENTENCE ')' ';' { // string
 	translate_output(mips_file, $3.sval, $3.type);
 }
 ;
@@ -227,8 +231,12 @@ assign_stmt: ID ASSIGN expression ';' { // 1
 		}
 		else {
 			tempID->is_init = true;
+			// Generate reg_name
+			char* reg_name = generate_reg_name(tempID->type);
 			// mips
-			translate_assignment(mips_file, tempID->name, $3.sval, tempID->type);
+			translate_assignment(mips_file, tempID->name, $3.sval, tempID->type, reg_name);
+			// free register name
+			free(reg_name);
 		}
 	}
 }
