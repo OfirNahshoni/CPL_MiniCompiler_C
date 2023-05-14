@@ -11,6 +11,7 @@ typedef struct Val {
     char* sval;
     char type; // 'i'-int , 'r'-real , 's'-string
     bool res_bool_exp;
+    bool is_num;
 } Val;
 
 #endif

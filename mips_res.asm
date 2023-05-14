@@ -10,46 +10,21 @@
 	w1:	.float 0
 	str2:	.asciiz 0
 	str1:	.asciiz 0
-	z2:	.word 5
-	z1:	.float 11.2
 .text
 	# Main program
 	.global main
 	main:
-		# Load address of id into a register
-		la $at, x1
-		# Load integer into temp reg
-		li $t0, 2
-		# Store temp reg's value into id
-		sw $t0, 0($at)
-		# Get input from user
-		# Load system call to read an integer
-		li $v0, 5
-		syscall
-		# Store input value in x1
-		la $at, x1
-		sw $v0, 0($at)
-		# Get input from user
-		# Load system call to read floating point number
-		li $v0, 6
-		syscall
-		# Store input value in w1
-		la $at, w1
-		s.s $f0, 0($at)
-		# Print output
-		# Load address of output string into $a0
-		la $a0, "Ofir"
-		# Load system call to print a string
-		li $v0, 4
-		syscall
-		# Print output
-		# Load address of integer value into $at
-		la $at, x1
-		# Load value from memory into $a0
-		lw $a0, 0($at)
-		# Load system call to print an integer
-		li $v0, 1
-		syscall
+		# Load int value into $t0
+		li $t0, 1
+		# Store $t0 into x1 (in .data section)
+		sw $t0, x1
+		# Load x1 value to $t0
+		lw $t0, x1
+		# Cast int to float
+		mtc1 $t0, $f0
+		cvt.s.w $f0, $f0
+		# Store $f0 value into w1
+		s.s $f0, w1
 		# Free the Stack
 		lw $ra, -4($fp)
 		addi $sp, $sp, 4

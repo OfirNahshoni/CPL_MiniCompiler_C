@@ -502,11 +502,11 @@ static const yytype_uint16 yyrline[] =
 {
        0,    55,    55,    55,    81,    81,    86,    89,    90,    93,
       93,    97,   109,   123,   145,   148,   149,   150,   153,   154,
-     157,   158,   181,   182,   183,   184,   187,   207,   210,   215,
-     245,   246,   247,   247,   268,   268,   298,   301,   304,   323,
-     326,   327,   334,   349,   364,   379,   396,   397,   400,   401,
-     404,   405,   408,   414,   420,   423,   434,   445,   448,   451,
-     473
+     157,   158,   176,   177,   178,   179,   182,   202,   205,   210,
+     247,   248,   249,   249,   270,   270,   300,   303,   306,   325,
+     328,   329,   336,   351,   366,   381,   398,   399,   402,   403,
+     406,   407,   412,   427,   435,   442,   455,   468,   475,   478,
+     501
 };
 #endif
 
@@ -1673,14 +1673,9 @@ yyreduce:
 		}
 		else {
 			tempID->is_init = true;
-			// Generate reg_name
-			char* reg_name = generate_reg_name('s');
 			// mips
-			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, 's', reg_name);
-			// free register name
-			free(reg_name);
+			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, false, tempID->type, NULL, false);
 		}
-
 	}
 ;}
     break;
@@ -1688,7 +1683,7 @@ yyreduce:
   case 26:
 
 /* Line 1455 of yacc.c  */
-#line 187 "parser.y"
+#line 182 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(3) - (5)].val).sval);
 	if (tempID == NULL) {
@@ -1712,7 +1707,7 @@ yyreduce:
   case 27:
 
 /* Line 1455 of yacc.c  */
-#line 207 "parser.y"
+#line 202 "parser.y"
     { // int or real
 	translate_output(mips_file, (yyvsp[(3) - (5)].val).sval, (yyvsp[(3) - (5)].val).type);
 ;}
@@ -1721,7 +1716,7 @@ yyreduce:
   case 28:
 
 /* Line 1455 of yacc.c  */
-#line 210 "parser.y"
+#line 205 "parser.y"
     { // string
 	translate_output(mips_file, (yyvsp[(3) - (5)].val).sval, (yyvsp[(3) - (5)].val).type);
 ;}
@@ -1730,8 +1725,10 @@ yyreduce:
   case 29:
 
 /* Line 1455 of yacc.c  */
-#line 215 "parser.y"
-    { // 1
+#line 210 "parser.y"
+    { // expression.type = 'i' or 'r'
+	char* id_reg_name;
+	char* exp_reg_name;
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(1) - (4)].val).sval);
 	if (tempID == NULL) {
 		is_prog_valid = false;
@@ -1747,15 +1744,20 @@ yyreduce:
 				is_prog_valid = false;
 				yyerror("Assign operation is not valid.");
 			}
+			else { // tempID-> = 'r' & expression.type = 'i' (need casting from int to float)
+				tempID->is_init = true;
+				// Generate reg_name
+				id_reg_name = generate_reg_name(tempID->type); // 'r'
+				// mips
+				translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, (yyvsp[(3) - (4)].val).is_num, tempID->type, id_reg_name, true);
+			}
 		}
-		else {
+		else { // (tempID->type and expression.type) = 'i' or (tempID->type and expression.type) = 'r'
 			tempID->is_init = true;
 			// Generate reg_name
-			char* reg_name = generate_reg_name(tempID->type);
+			id_reg_name = generate_reg_name(tempID->type); // 'i' or 'r'
 			// mips
-			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, tempID->type, reg_name);
-			// free register name
-			free(reg_name);
+			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, (yyvsp[(3) - (4)].val).is_num, tempID->type, id_reg_name, false);
 		}
 	}
 ;}
@@ -1764,7 +1766,7 @@ yyreduce:
   case 32:
 
 /* Line 1455 of yacc.c  */
-#line 247 "parser.y"
+#line 249 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(2) - (8)].val).sval);
 	if (tempID == NULL) {
@@ -1791,7 +1793,7 @@ yyreduce:
   case 34:
 
 /* Line 1455 of yacc.c  */
-#line 268 "parser.y"
+#line 270 "parser.y"
     {
 	symbol_table_entry* tempID1 = lookup(SymbolTable, (yyvsp[(2) - (8)].val).sval);
 	symbol_table_entry* tempID2 = lookup(SymbolTable, (yyvsp[(6) - (8)].val).sval);
@@ -1827,7 +1829,7 @@ yyreduce:
   case 38:
 
 /* Line 1455 of yacc.c  */
-#line 304 "parser.y"
+#line 306 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(3) - (7)].val).sval);
 	if (tempID == NULL) {
@@ -1850,7 +1852,7 @@ yyreduce:
   case 39:
 
 /* Line 1455 of yacc.c  */
-#line 323 "parser.y"
+#line 325 "parser.y"
     {
 	current_type = (yyvsp[(2) - (7)].val).type;
 ;}
@@ -1859,7 +1861,7 @@ yyreduce:
   case 41:
 
 /* Line 1455 of yacc.c  */
-#line 327 "parser.y"
+#line 329 "parser.y"
     {
 	is_prog_valid = false;
 	yyerror("default keyword is missing.");
@@ -1869,7 +1871,7 @@ yyreduce:
   case 42:
 
 /* Line 1455 of yacc.c  */
-#line 334 "parser.y"
+#line 336 "parser.y"
     {
 	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
@@ -1890,7 +1892,7 @@ yyreduce:
   case 43:
 
 /* Line 1455 of yacc.c  */
-#line 349 "parser.y"
+#line 351 "parser.y"
     {
 	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
@@ -1911,7 +1913,7 @@ yyreduce:
   case 44:
 
 /* Line 1455 of yacc.c  */
-#line 364 "parser.y"
+#line 366 "parser.y"
     {
 	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
@@ -1932,7 +1934,7 @@ yyreduce:
   case 45:
 
 /* Line 1455 of yacc.c  */
-#line 379 "parser.y"
+#line 381 "parser.y"
     { // i = i / 4
 	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
@@ -1953,38 +1955,53 @@ yyreduce:
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 408 "parser.y"
+#line 412 "parser.y"
     {
+	// Registers
+	char* reg1_name = generate_reg_name((yyvsp[(1) - (3)].val).type); // $t0
+	char* reg2_name = generate_reg_name((yyvsp[(3) - (3)].val).type); // $t1
+
+	// Type Checking
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
 	else
 		(yyval.val).type = 'i';
+
+	//
+
+	(yyval.val).is_num = true;
 ;}
     break;
 
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 414 "parser.y"
+#line 427 "parser.y"
     {
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
 	else
 		(yyval.val).type = 'i';
+
+	(yyval.val).is_num = true;
 ;}
     break;
 
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 420 "parser.y"
-    { (yyval.val).type = (yyvsp[(1) - (1)].val).type; (yyval.val).sval = (yyvsp[(1) - (1)].val).sval; ;}
+#line 435 "parser.y"
+    { 
+	(yyval.val).type = (yyvsp[(1) - (1)].val).type;
+	(yyval.val).sval = (yyvsp[(1) - (1)].val).sval; 
+	(yyval.val).is_num = (yyvsp[(1) - (1)].val).is_num;
+;}
     break;
 
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 423 "parser.y"
+#line 442 "parser.y"
     {
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
@@ -1993,15 +2010,17 @@ yyreduce:
 			is_prog_valid = false;
 			yyerror("Cannot do arithmetic operations on strings");
 		}
-		else
+		else {
 			(yyval.val).type = (yyvsp[(1) - (3)].val).type;
+			(yyval.val).is_num = true;
+		}
 ;}
     break;
 
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 434 "parser.y"
+#line 455 "parser.y"
     {
 	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
 		(yyval.val).type = 'r';
@@ -2010,22 +2029,28 @@ yyreduce:
 			is_prog_valid = false;
 			yyerror("Cannot do arithmetic operations on strings");
 		}
-		else
+		else {
 			(yyval.val).type = (yyvsp[(1) - (3)].val).type;
+			(yyval.val).is_num = true;
+		}
 ;}
     break;
 
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 445 "parser.y"
-    {(yyval.val).type = (yyvsp[(1) - (1)].val).type; (yyval.val).sval = (yyvsp[(1) - (1)].val).sval;;}
+#line 468 "parser.y"
+    {
+	(yyval.val).type = (yyvsp[(1) - (1)].val).type;
+	(yyval.val).sval = (yyvsp[(1) - (1)].val).sval;
+	(yyval.val).is_num = (yyvsp[(1) - (1)].val).is_num;
+;}
     break;
 
   case 58:
 
 /* Line 1455 of yacc.c  */
-#line 448 "parser.y"
+#line 475 "parser.y"
     {
 	(yyval.val).type = (yyvsp[(2) - (3)].val).type;
 ;}
@@ -2034,7 +2059,7 @@ yyreduce:
   case 59:
 
 /* Line 1455 of yacc.c  */
-#line 451 "parser.y"
+#line 478 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(1) - (1)].val).sval);
 	if (tempID == NULL) { // ERROR
@@ -2054,6 +2079,7 @@ yyreduce:
 			current_type = tempID->type;
 			(yyval.val).type = current_type;
 			(yyval.val).sval = (yyvsp[(1) - (1)].val).sval;
+			(yyval.val).is_num = false;
 		}
 	}
 ;}
@@ -2062,18 +2088,19 @@ yyreduce:
   case 60:
 
 /* Line 1455 of yacc.c  */
-#line 473 "parser.y"
+#line 501 "parser.y"
     {
 	current_type = (yyvsp[(1) - (1)].val).type; // 'r' or 'i'
 	(yyval.val).type = current_type;
 	(yyval.val).sval = (yyvsp[(1) - (1)].val).sval;
+	(yyval.val).is_num = true;
 ;}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 2077 "parser.tab.c"
+#line 2104 "parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2285,7 +2312,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 480 "parser.y"
+#line 509 "parser.y"
 
 // Main function
 int main(int argc, char* argv[])

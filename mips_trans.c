@@ -61,6 +61,30 @@ char* generate_label() {
     return label_name;
 }
 
+// void free_reg(char type) {
+//     switch (type)
+//     {
+//         case 'i':
+            
+//             break;
+//         case 'r':
+            
+//             break;
+//         case 's':
+            
+//             break;
+//         default:
+//             break;
+//     }
+// }
+
+// Function to cast integer into float
+void cast_int2float(FILE* mips_file, char* int_reg_name, char* float_reg_name) {
+    fprintf(mips_file, "\t\t# Cast int to float\n");
+    fprintf(mips_file, "\t\tmtc1 %s, %s\n", int_reg_name, float_reg_name);
+    fprintf(mips_file, "\t\tcvt.s.w %s, %s\n", float_reg_name, float_reg_name);
+}
+
 void translate_declar(FILE* mips_file, char type, char* id, char* sval) {
     switch (type)
     {
@@ -78,35 +102,72 @@ void translate_declar(FILE* mips_file, char type, char* id, char* sval) {
     }
 }
 
-void translate_assignment(FILE *mips_file, char* id, char* value, char type, char* reg_name) {
+void translate_assignment(FILE *mips_file, char* id, char* exp_val, bool is_exp_num, char id_type, char* id_reg_name, bool need2cast) {
+    // Reg names for string assignment
     char* reg_name_new;
     char* reg_name_dest;
     char* reg_name_byte;
+    // Temporary reg name (for int registers - to expression)
+    char* temp_reg;
 
-    switch (type)
+    switch (id_type)
     {
         case 'i': // int
-            fprintf(mips_file, "\t\t# Load address of id into a register\n");
-            fprintf(mips_file, "\t\tla $at, %s\n", id);
-            fprintf(mips_file, "\t\t# Load integer into temp reg\n");
-            fprintf(mips_file, "\t\tli %s, %s\n", reg_name, value);
-            fprintf(mips_file, "\t\t# Store temp reg's value into id\n");
-            fprintf(mips_file, "\t\tsw %s, 0($at)\n", reg_name);
+            if (is_exp_num) { // expression is a number (immediate)
+                fprintf(mips_file, "\t\t# Load int value into %s\n", id_reg_name);
+                fprintf(mips_file, "\t\tli %s, %s\n", id_reg_name, exp_val);
+            }
+
+            else { // expression is id (variable with label in .data section)
+                fprintf(mips_file, "\t\t# Load int value of %s into %s\n", exp_val, id_reg_name);
+                fprintf(mips_file, "\t\tlw %s, %s\n", id_reg_name, exp_val);
+            }
+
+            // Store reg value to memory
+            fprintf(mips_file, "\t\t# Store %s into %s (in .data section)\n", id_reg_name, id);
+            fprintf(mips_file, "\t\tsw %s, %s\n", id_reg_name, id);
+            
+            // Update counter and free id_reg_name
+            int_counter--;
+            free(id_reg_name);
             break;
-        case 'r': // real
-            // mips - Declarations
-            fprintf(mips_file, "\t\t.data\n");
-            fprintf(mips_file, "\t\t\t# Align to a word boundary\n");
-            fprintf(mips_file, "\t\t\t.align 2\n");
-            fprintf(mips_file, "\t\t\t%s_to_assign: .float %s\n", id, value);
-            // mips - actions
-            fprintf(mips_file, "\t\t.text\n");
-            fprintf(mips_file, "\t\t\t# Load float value into float reg\n");
-            fprintf(mips_file, "\t\t\tl.s %s, %s_to_assign\n", reg_name, id);
-            fprintf(mips_file, "\t\t\t# Load address of id into a register\n");
-            fprintf(mips_file, "\t\tla $at, %s\n", id);
-            fprintf(mips_file, "\t\t\t# Store float value to id (memory)\n");
-            fprintf(mips_file, "\t\t\ts.s %s, 0($at)\n", reg_name);
+
+        case 'r':
+            if (need2cast) { // Casting (for expression) is needed
+                // Generate temp reg name
+                temp_reg = generate_reg_name('i'); // Temporary int register
+
+                if (is_exp_num) { // expression is a integer number
+                    fprintf(mips_file, "\t\t# Load integer value to %s\n", temp_reg);
+                    fprintf(mips_file, "\t\tli %s, %s\n", temp_reg, exp_val);
+                }
+                else { // expression is id (int)
+                    fprintf(mips_file, "\t\t# Load %s value to %s\n", exp_val, temp_reg);
+                    fprintf(mips_file, "\t\tlw %s, %s\n", temp_reg, exp_val);
+                }
+                cast_int2float(mips_file, temp_reg, id_reg_name); // Set id_reg_name with the casted value
+                
+                // Update the counter (int) and free the temp_reg (int reg)
+                int_counter--;
+                free(temp_reg);
+            }
+            else { // No casting
+                if (is_exp_num) { // expression is a floating point number
+                    fprintf(mips_file, "\t\t# Load floating point value to %s\n", id_reg_name);
+                    fprintf(mips_file, "\t\tli.s %s, %s\n", id_reg_name, exp_val);
+                }
+                else { // expression is id (real)
+                    fprintf(mips_file, "\t\t# Load %s value to %s\n", exp_val, id_reg_name);
+                    fprintf(mips_file, "\t\tl.s %s, %s\n", id_reg_name, exp_val);
+                }
+            }
+            // Store id_reg_name value to memory (into id)
+            fprintf(mips_file, "\t\t# Store %s value into %s\n", id_reg_name, id);
+            fprintf(mips_file, "\t\ts.s %s, %s\n", id_reg_name, id);
+
+            // Update counter and free id_reg_name
+            float_counter--;
+            free(id_reg_name);
             break;
 
         case 's': // string
@@ -116,7 +177,7 @@ void translate_assignment(FILE *mips_file, char* id, char* value, char type, cha
             reg_name_byte = generate_reg_name('s'); // $s2
             // mips - Declarations
             fprintf(mips_file, "\t\t.data\n");
-            fprintf(mips_file, "\t\t\t%s_new: .asciiz %s\n", id, value);
+            fprintf(mips_file, "\t\t\t%s_new: .asciiz %s\n", id, exp_val);
             // mips - actions
             fprintf(mips_file, "\t\t.text\n");
             fprintf(mips_file, "\t\t\t# Load address of new string into temp reg\n");
@@ -136,6 +197,9 @@ void translate_assignment(FILE *mips_file, char* id, char* value, char type, cha
             fprintf(mips_file, "\t\t\taddiu %s, %s, 1\n", reg_name_dest, reg_name_dest);
             fprintf(mips_file, "\t\t\tj str_copy_loop_%s\n", id);
             fprintf(mips_file, "\t\tstr_copy_end_%s:\n", id);
+            // Update counter
+            string_counter -= 3;
+            // free reg names
             free(reg_name_new);
             free(reg_name_dest);
             free(reg_name_byte);
@@ -210,5 +274,51 @@ void translate_output(FILE* mips_file, char* value, char type) {
             break;
         default:
             break;
+    }
+}
+
+// x1 + 5
+void translate_arithmetic_op(FILE* mips_file, Op op, char* reg1_name, char* reg2_name, char type) {
+    fprintf(mips_file, "\t\t# Arithmetic operation\n");
+
+    if (type == 'i') { // int
+        switch (op) {
+            case MY_PLUS:
+                fprintf(mips_file, "\t\tadd %s, %s, %s\n", reg1_name, reg1_name, reg2_name);
+                break;
+            case MY_MINUS:
+                fprintf(mips_file, "\t\tsub %s, %s, %s\n", reg1_name, reg1_name, reg2_name);
+                break;
+            case MY_MUL:
+                fprintf(mips_file, "\t\tmul %s, %s, %s\n", reg1_name, reg1_name, reg2_name);
+                break;
+            case MY_DIV:
+                fprintf(mips_file, "\t\tdiv %s, %s\n", reg1_name, reg2_name); // Quotient will be in $LO
+                fprintf(mips_file, "\t\tmflo %s\n", reg1_name); // Move from LO to result register
+                break;
+            default:
+                break; // Unsupported operation
+        }
+        // Update int counter
+        int_counter--;
+    } else if (type == 'r') { // Real (floating point) operations
+        switch (op) {
+            case MY_PLUS:
+                fprintf(mips_file, "\t\tadd.s %s, %s, %s\n", reg1_name, reg1_name, reg2_name);
+                break;
+            case MY_MINUS:
+                fprintf(mips_file, "\t\tsub.s %s, %s, %s\n", reg1_name, reg1_name, reg2_name);
+                break;
+            case MY_MUL:
+                fprintf(mips_file, "\t\tmul.s %s, %s, %s\n", reg1_name, reg1_name, reg2_name);
+                break;
+            case MY_DIV:
+                fprintf(mips_file, "\t\tdiv.s %s, %s, %s\n", reg1_name, reg1_name, reg2_name);
+                break;
+            default:
+                break; // Unsupported operation
+        }
+        // Update float counter
+        float_counter--;
     }
 }

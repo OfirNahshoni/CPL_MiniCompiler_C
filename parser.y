@@ -168,14 +168,9 @@ stmt: assign_stmt
 		}
 		else {
 			tempID->is_init = true;
-			// Generate reg_name
-			char* reg_name = generate_reg_name('s');
 			// mips
-			translate_assignment(mips_file, tempID->name, $3.sval, 's', reg_name);
-			// free register name
-			free(reg_name);
+			translate_assignment(mips_file, tempID->name, $3.sval, false, tempID->type, NULL, false);
 		}
-
 	}
 }
 | control_stmt
@@ -212,7 +207,9 @@ out_stmt: OUT '(' expression ')' ';' { // int or real
 }
 ;
 
-assign_stmt: ID ASSIGN expression ';' { // 1
+assign_stmt: ID ASSIGN expression ';' { // expression.type = 'i' or 'r'
+	char* id_reg_name;
+	char* exp_reg_name;
 	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
 	if (tempID == NULL) {
 		is_prog_valid = false;
@@ -228,15 +225,20 @@ assign_stmt: ID ASSIGN expression ';' { // 1
 				is_prog_valid = false;
 				yyerror("Assign operation is not valid.");
 			}
+			else { // tempID-> = 'r' & expression.type = 'i' (need casting from int to float)
+				tempID->is_init = true;
+				// Generate reg_name
+				id_reg_name = generate_reg_name(tempID->type); // 'r'
+				// mips
+				translate_assignment(mips_file, tempID->name, $3.sval, $3.is_num, tempID->type, id_reg_name, true);
+			}
 		}
-		else {
+		else { // (tempID->type and expression.type) = 'i' or (tempID->type and expression.type) = 'r'
 			tempID->is_init = true;
 			// Generate reg_name
-			char* reg_name = generate_reg_name(tempID->type);
+			id_reg_name = generate_reg_name(tempID->type); // 'i' or 'r'
 			// mips
-			translate_assignment(mips_file, tempID->name, $3.sval, tempID->type, reg_name);
-			// free register name
-			free(reg_name);
+			translate_assignment(mips_file, tempID->name, $3.sval, $3.is_num, tempID->type, id_reg_name, false);
 		}
 	}
 }
@@ -405,19 +407,36 @@ bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factor */
 | expression RELOP expression
 ;
 
+// 6 + 6
+// la $t0, x
 expression: expression PLUS term {
+	// Registers
+	char* reg1_name = generate_reg_name($1.type); // $t0
+	char* reg2_name = generate_reg_name($3.type); // $t1
+
+	// Type Checking
 	if ($1.type == 'r' || $3.type == 'r')
 		$$.type = 'r';
 	else
 		$$.type = 'i';
+
+	//
+
+	$$.is_num = true;
 }
 | expression MINUS term {
 	if ($1.type == 'r' || $3.type == 'r')
 		$$.type = 'r';
 	else
 		$$.type = 'i';
+
+	$$.is_num = true;
 }
-| term { $$.type = $1.type; $$.sval = $1.sval; }
+| term { 
+	$$.type = $1.type;
+	$$.sval = $1.sval; 
+	$$.is_num = $1.is_num;
+}
 ;
 
 term: term MUL factor {
@@ -428,8 +447,10 @@ term: term MUL factor {
 			is_prog_valid = false;
 			yyerror("Cannot do arithmetic operations on strings");
 		}
-		else
+		else {
 			$$.type = $1.type;
+			$$.is_num = true;
+		}
 }
 | term DIV factor {
 	if ($1.type == 'r' || $3.type == 'r')
@@ -439,10 +460,16 @@ term: term MUL factor {
 			is_prog_valid = false;
 			yyerror("Cannot do arithmetic operations on strings");
 		}
-		else
+		else {
 			$$.type = $1.type;
+			$$.is_num = true;
+		}
 }
-| factor {$$.type = $1.type; $$.sval = $1.sval;}
+| factor {
+	$$.type = $1.type;
+	$$.sval = $1.sval;
+	$$.is_num = $1.is_num;
+}
 ;
 
 factor: '(' expression ')' {
@@ -467,6 +494,7 @@ factor: '(' expression ')' {
 			current_type = tempID->type;
 			$$.type = current_type;
 			$$.sval = $1.sval;
+			$$.is_num = false;
 		}
 	}
 }
@@ -474,6 +502,7 @@ factor: '(' expression ')' {
 	current_type = $1.type; // 'r' or 'i'
 	$$.type = current_type;
 	$$.sval = $1.sval;
+	$$.is_num = true;
 }
 ;
 
