@@ -169,7 +169,7 @@ stmt: assign_stmt
 		else {
 			tempID->is_init = true;
 			// mips
-			translate_assignment(mips_file, tempID->name, $3.sval, false, tempID->type, NULL, false);
+			translate_assignment(mips_file, tempID->name, $3.sval, false, tempID->type, NULL, false, false);
 		}
 	}
 }
@@ -228,17 +228,17 @@ assign_stmt: ID ASSIGN expression ';' { // expression.type = 'i' or 'r'
 			else { // tempID-> = 'r' & expression.type = 'i' (need casting from int to float)
 				tempID->is_init = true;
 				// Generate reg_name
-				id_reg_name = generate_reg_name(tempID->type); // 'r'
+				id_reg_name = strdup($3.reg_name); // 'r'
 				// mips
-				translate_assignment(mips_file, tempID->name, $3.sval, $3.is_num, tempID->type, id_reg_name, true);
+				translate_assignment(mips_file, tempID->name, $3.sval, $3.is_num, tempID->type, id_reg_name, true, $3.is_exp);
 			}
 		}
 		else { // (tempID->type and expression.type) = 'i' or (tempID->type and expression.type) = 'r'
 			tempID->is_init = true;
 			// Generate reg_name
-			id_reg_name = generate_reg_name(tempID->type); // 'i' or 'r'
+			id_reg_name = strdup($3.reg_name); // 'i' or 'r'
 			// mips
-			translate_assignment(mips_file, tempID->name, $3.sval, $3.is_num, tempID->type, id_reg_name, false);
+			translate_assignment(mips_file, tempID->name, $3.sval, $3.is_num, tempID->type, id_reg_name, false, $3.is_exp);
 		}
 	}
 }
@@ -344,8 +344,11 @@ step: ID ASSIGN ID PLUS NUM {
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else{
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 }
 | ID ASSIGN ID MINUS NUM {
@@ -359,8 +362,11 @@ step: ID ASSIGN ID PLUS NUM {
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else{
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 }
 | ID ASSIGN ID MUL NUM {
@@ -374,8 +380,11 @@ step: ID ASSIGN ID PLUS NUM {
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else {
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 }
 | ID ASSIGN ID DIV NUM { // i = i / 4
@@ -389,8 +398,11 @@ step: ID ASSIGN ID PLUS NUM {
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else {
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 }
 ;
@@ -407,42 +419,73 @@ bool_factor: '!' '(' bool_factor ')' /* -> NOT bool_factor */
 | expression RELOP expression
 ;
 
-// 6 + 6
-// la $t0, x
 expression: expression PLUS term {
-	// Registers
-	char* reg1_name = generate_reg_name($1.type); // $t0
-	char* reg2_name = generate_reg_name($3.type); // $t1
+    // Create fields
+    char* reg1_name = strdup($1.reg_name);
+    char reg1_type = $1.type;
+    bool reg1_is_num = $1.is_num;
+    char* reg2_name = strdup($3.reg_name);
+    char reg2_type = $3.type;
+    bool reg2_is_num = $3.is_num;
 
-	// Type Checking
-	if ($1.type == 'r' || $3.type == 'r')
-		$$.type = 'r';
-	else
-		$$.type = 'i';
+    if (reg1_type == 'r' || reg2_type == 'r')
+        $$.type = 'r';
+    else
+        $$.type = 'i';
 
-	//
-
-	$$.is_num = true;
+    $$.is_exp = true;
+	$$.is_paran = false;
+	
+    // mips call function - translate_arithmetic_op
+    translate_arithmetic_op(mips_file, MY_PLUS, $1.sval, reg1_name, reg1_type, reg1_is_num, $1.is_paran, $3.sval, reg2_name, reg2_type, reg2_is_num, $3.is_paran, $$.type);
 }
 | expression MINUS term {
-	if ($1.type == 'r' || $3.type == 'r')
-		$$.type = 'r';
-	else
-		$$.type = 'i';
+    // Create fields
+    char* reg1_name = strdup($1.reg_name);
+    char reg1_type = $1.type;
+    bool reg1_is_num = $1.is_num;
+    char* reg2_name = strdup($3.reg_name);
+    char reg2_type = $3.type;
+    bool reg2_is_num = $3.is_num;
 
-	$$.is_num = true;
+    if (reg1_type == 'r' || reg2_type == 'r')
+        $$.type = 'r';
+    else
+        $$.type = 'i';
+
+    $$.is_exp = true;
+	$$.is_paran = false;
+
+    // mips call function - translate_arithmetic_op
+    translate_arithmetic_op(mips_file, MY_MINUS, $1.sval, reg1_name, reg1_type, reg1_is_num, $1.is_paran, $3.sval, reg2_name, reg2_type, reg2_is_num, $3.is_paran, $$.type);
 }
 | term { 
-	$$.type = $1.type;
-	$$.sval = $1.sval; 
-	$$.is_num = $1.is_num;
+    $$.type = $1.type;
+    $$.sval = $1.sval; 
+    $$.is_num = $1.is_num;
+    $$.reg_name = strdup($1.reg_name);
+	$$.is_exp = $1.is_exp;
+	$$.is_paran = $1.is_paran;
 }
 ;
 
+
 term: term MUL factor {
-	if ($1.type == 'r' || $3.type == 'r')
+	// Create fields
+    char* reg1_name = strdup($1.reg_name);
+    char reg1_type = $1.type;
+    bool reg1_is_num = $1.is_num;
+    char* reg2_name = strdup($3.reg_name);
+    char reg2_type = $3.type;
+    bool reg2_is_num = $3.is_num;
+
+	if ($1.type == 'r' || $3.type == 'r') {
 		$$.type = 'r';
-	else
+		$$.is_paran = false;
+		// mips
+    	translate_arithmetic_op(mips_file, MY_MUL, $1.sval, reg1_name, reg1_type, reg1_is_num, $1.is_paran, $3.sval, reg2_name, reg2_type, reg2_is_num, $3.is_paran, $$.type);
+	}
+	else {
 		if ($1.type == 's' || $3.type == 's') {
 			is_prog_valid = false;
 			yyerror("Cannot do arithmetic operations on strings");
@@ -450,11 +493,29 @@ term: term MUL factor {
 		else {
 			$$.type = $1.type;
 			$$.is_num = true;
+			$$.is_exp = true;
+			$$.is_paran = false;
+
+			// mips
+ 		   	translate_arithmetic_op(mips_file, MY_MUL, $1.sval, reg1_name, reg1_type, reg1_is_num, $1.is_paran, $3.sval, reg2_name, reg2_type, reg2_is_num, $3.is_paran, $$.type);
 		}
+	}
+
 }
 | term DIV factor {
-	if ($1.type == 'r' || $3.type == 'r')
+	// Create fields
+    char* reg1_name = strdup($1.reg_name);
+    char reg1_type = $1.type;
+    bool reg1_is_num = $1.is_num;
+    char* reg2_name = strdup($3.reg_name);
+    char reg2_type = $3.type;
+    bool reg2_is_num = $3.is_num;
+	
+	if ($1.type == 'r' || $3.type == 'r') {
 		$$.type = 'r';
+		// mips
+    	translate_arithmetic_op(mips_file, MY_DIV, $1.sval, reg1_name, reg1_type, reg1_is_num, $1.is_paran, $3.sval, reg2_name, reg2_type, reg2_is_num, $3.is_paran, $$.type);
+	}
 	else
 		if ($1.type == 's' || $3.type == 's') {
 			is_prog_valid = false;
@@ -463,17 +524,31 @@ term: term MUL factor {
 		else {
 			$$.type = $1.type;
 			$$.is_num = true;
+			$$.is_exp = true;
+			$$.is_paran = false;
+
+			// mips
+    		translate_arithmetic_op(mips_file, MY_DIV, $1.sval, reg1_name, reg1_type, reg1_is_num, $1.is_paran, $3.sval, reg2_name, reg2_type, reg2_is_num, $3.is_paran, $$.type);
 		}
 }
 | factor {
 	$$.type = $1.type;
 	$$.sval = $1.sval;
 	$$.is_num = $1.is_num;
+	$$.reg_name = strdup($1.reg_name);
+	$$.is_exp = $1.is_exp;
+	$$.is_paran = $1.is_paran;
 }
 ;
 
 factor: '(' expression ')' {
 	$$.type = $2.type;
+	$$.reg_name = strdup($2.reg_name);
+	$$.is_exp = true;
+	$$.is_num = $2.is_num;
+	$$.is_exp = $2.is_exp;
+	$$.sval = $2.sval;
+	$$.is_paran = true;
 }
 | ID {
 	symbol_table_entry* tempID = lookup(SymbolTable, $1.sval);
@@ -495,6 +570,9 @@ factor: '(' expression ')' {
 			$$.type = current_type;
 			$$.sval = $1.sval;
 			$$.is_num = false;
+			$$.reg_name = generate_reg_name(tempID->type);
+			$$.is_exp = false;
+			$$.is_paran = false;
 		}
 	}
 }
@@ -503,6 +581,9 @@ factor: '(' expression ')' {
 	$$.type = current_type;
 	$$.sval = $1.sval;
 	$$.is_num = true;
+	$$.reg_name = generate_reg_name($1.type);
+	$$.is_exp = false;
+	$$.is_paran = false;
 }
 ;
 

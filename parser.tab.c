@@ -504,9 +504,9 @@ static const yytype_uint16 yyrline[] =
       93,    97,   109,   123,   145,   148,   149,   150,   153,   154,
      157,   158,   176,   177,   178,   179,   182,   202,   205,   210,
      247,   248,   249,   249,   270,   270,   300,   303,   306,   325,
-     328,   329,   336,   351,   366,   381,   398,   399,   402,   403,
-     406,   407,   412,   427,   435,   442,   455,   468,   475,   478,
-     501
+     328,   329,   336,   354,   372,   390,   410,   411,   414,   415,
+     418,   419,   422,   442,   462,   473,   505,   534,   544,   553,
+     579
 };
 #endif
 
@@ -1674,7 +1674,7 @@ yyreduce:
 		else {
 			tempID->is_init = true;
 			// mips
-			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, false, tempID->type, NULL, false);
+			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, false, tempID->type, NULL, false, false);
 		}
 	}
 ;}
@@ -1747,17 +1747,17 @@ yyreduce:
 			else { // tempID-> = 'r' & expression.type = 'i' (need casting from int to float)
 				tempID->is_init = true;
 				// Generate reg_name
-				id_reg_name = generate_reg_name(tempID->type); // 'r'
+				id_reg_name = strdup((yyvsp[(3) - (4)].val).reg_name); // 'r'
 				// mips
-				translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, (yyvsp[(3) - (4)].val).is_num, tempID->type, id_reg_name, true);
+				translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, (yyvsp[(3) - (4)].val).is_num, tempID->type, id_reg_name, true, (yyvsp[(3) - (4)].val).is_exp);
 			}
 		}
 		else { // (tempID->type and expression.type) = 'i' or (tempID->type and expression.type) = 'r'
 			tempID->is_init = true;
 			// Generate reg_name
-			id_reg_name = generate_reg_name(tempID->type); // 'i' or 'r'
+			id_reg_name = strdup((yyvsp[(3) - (4)].val).reg_name); // 'i' or 'r'
 			// mips
-			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, (yyvsp[(3) - (4)].val).is_num, tempID->type, id_reg_name, false);
+			translate_assignment(mips_file, tempID->name, (yyvsp[(3) - (4)].val).sval, (yyvsp[(3) - (4)].val).is_num, tempID->type, id_reg_name, false, (yyvsp[(3) - (4)].val).is_exp);
 		}
 	}
 ;}
@@ -1883,8 +1883,11 @@ yyreduce:
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else{
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 ;}
     break;
@@ -1892,7 +1895,7 @@ yyreduce:
   case 43:
 
 /* Line 1455 of yacc.c  */
-#line 351 "parser.y"
+#line 354 "parser.y"
     {
 	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
@@ -1904,8 +1907,11 @@ yyreduce:
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else{
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 ;}
     break;
@@ -1913,7 +1919,7 @@ yyreduce:
   case 44:
 
 /* Line 1455 of yacc.c  */
-#line 366 "parser.y"
+#line 372 "parser.y"
     {
 	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
@@ -1925,8 +1931,11 @@ yyreduce:
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else {
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 ;}
     break;
@@ -1934,7 +1943,7 @@ yyreduce:
   case 45:
 
 /* Line 1455 of yacc.c  */
-#line 381 "parser.y"
+#line 390 "parser.y"
     { // i = i / 4
 	if (strcmp((yyvsp[(1) - (5)].val).sval, (yyvsp[(3) - (5)].val).sval) != 0) { // Infinite loop
 		is_prog_valid = false;
@@ -1946,8 +1955,11 @@ yyreduce:
 			is_prog_valid = false;
 			yyerror("ID is not declared!");
 		}
-		else
+		else {
 			tempID1->is_init = true;
+			// mips
+
+		}
 	}
 ;}
     break;
@@ -1955,57 +1967,89 @@ yyreduce:
   case 52:
 
 /* Line 1455 of yacc.c  */
-#line 412 "parser.y"
+#line 422 "parser.y"
     {
-	// Registers
-	char* reg1_name = generate_reg_name((yyvsp[(1) - (3)].val).type); // $t0
-	char* reg2_name = generate_reg_name((yyvsp[(3) - (3)].val).type); // $t1
+    // Create fields
+    char* reg1_name = strdup((yyvsp[(1) - (3)].val).reg_name);
+    char reg1_type = (yyvsp[(1) - (3)].val).type;
+    bool reg1_is_num = (yyvsp[(1) - (3)].val).is_num;
+    char* reg2_name = strdup((yyvsp[(3) - (3)].val).reg_name);
+    char reg2_type = (yyvsp[(3) - (3)].val).type;
+    bool reg2_is_num = (yyvsp[(3) - (3)].val).is_num;
 
-	// Type Checking
-	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
-		(yyval.val).type = 'r';
-	else
-		(yyval.val).type = 'i';
+    if (reg1_type == 'r' || reg2_type == 'r')
+        (yyval.val).type = 'r';
+    else
+        (yyval.val).type = 'i';
 
-	//
-
-	(yyval.val).is_num = true;
+    (yyval.val).is_exp = true;
+	(yyval.val).is_paran = false;
+	
+    // mips call function - translate_arithmetic_op
+    translate_arithmetic_op(mips_file, MY_PLUS, (yyvsp[(1) - (3)].val).sval, reg1_name, reg1_type, reg1_is_num, (yyvsp[(1) - (3)].val).is_paran, (yyvsp[(3) - (3)].val).sval, reg2_name, reg2_type, reg2_is_num, (yyvsp[(3) - (3)].val).is_paran, (yyval.val).type);
 ;}
     break;
 
   case 53:
 
 /* Line 1455 of yacc.c  */
-#line 427 "parser.y"
+#line 442 "parser.y"
     {
-	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
-		(yyval.val).type = 'r';
-	else
-		(yyval.val).type = 'i';
+    // Create fields
+    char* reg1_name = strdup((yyvsp[(1) - (3)].val).reg_name);
+    char reg1_type = (yyvsp[(1) - (3)].val).type;
+    bool reg1_is_num = (yyvsp[(1) - (3)].val).is_num;
+    char* reg2_name = strdup((yyvsp[(3) - (3)].val).reg_name);
+    char reg2_type = (yyvsp[(3) - (3)].val).type;
+    bool reg2_is_num = (yyvsp[(3) - (3)].val).is_num;
 
-	(yyval.val).is_num = true;
+    if (reg1_type == 'r' || reg2_type == 'r')
+        (yyval.val).type = 'r';
+    else
+        (yyval.val).type = 'i';
+
+    (yyval.val).is_exp = true;
+	(yyval.val).is_paran = false;
+
+    // mips call function - translate_arithmetic_op
+    translate_arithmetic_op(mips_file, MY_MINUS, (yyvsp[(1) - (3)].val).sval, reg1_name, reg1_type, reg1_is_num, (yyvsp[(1) - (3)].val).is_paran, (yyvsp[(3) - (3)].val).sval, reg2_name, reg2_type, reg2_is_num, (yyvsp[(3) - (3)].val).is_paran, (yyval.val).type);
 ;}
     break;
 
   case 54:
 
 /* Line 1455 of yacc.c  */
-#line 435 "parser.y"
+#line 462 "parser.y"
     { 
-	(yyval.val).type = (yyvsp[(1) - (1)].val).type;
-	(yyval.val).sval = (yyvsp[(1) - (1)].val).sval; 
-	(yyval.val).is_num = (yyvsp[(1) - (1)].val).is_num;
+    (yyval.val).type = (yyvsp[(1) - (1)].val).type;
+    (yyval.val).sval = (yyvsp[(1) - (1)].val).sval; 
+    (yyval.val).is_num = (yyvsp[(1) - (1)].val).is_num;
+    (yyval.val).reg_name = strdup((yyvsp[(1) - (1)].val).reg_name);
+	(yyval.val).is_exp = (yyvsp[(1) - (1)].val).is_exp;
+	(yyval.val).is_paran = (yyvsp[(1) - (1)].val).is_paran;
 ;}
     break;
 
   case 55:
 
 /* Line 1455 of yacc.c  */
-#line 442 "parser.y"
+#line 473 "parser.y"
     {
-	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
+	// Create fields
+    char* reg1_name = strdup((yyvsp[(1) - (3)].val).reg_name);
+    char reg1_type = (yyvsp[(1) - (3)].val).type;
+    bool reg1_is_num = (yyvsp[(1) - (3)].val).is_num;
+    char* reg2_name = strdup((yyvsp[(3) - (3)].val).reg_name);
+    char reg2_type = (yyvsp[(3) - (3)].val).type;
+    bool reg2_is_num = (yyvsp[(3) - (3)].val).is_num;
+
+	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r') {
 		(yyval.val).type = 'r';
-	else
+		(yyval.val).is_paran = false;
+		// mips
+    	translate_arithmetic_op(mips_file, MY_MUL, (yyvsp[(1) - (3)].val).sval, reg1_name, reg1_type, reg1_is_num, (yyvsp[(1) - (3)].val).is_paran, (yyvsp[(3) - (3)].val).sval, reg2_name, reg2_type, reg2_is_num, (yyvsp[(3) - (3)].val).is_paran, (yyval.val).type);
+	}
+	else {
 		if ((yyvsp[(1) - (3)].val).type == 's' || (yyvsp[(3) - (3)].val).type == 's') {
 			is_prog_valid = false;
 			yyerror("Cannot do arithmetic operations on strings");
@@ -2013,17 +2057,35 @@ yyreduce:
 		else {
 			(yyval.val).type = (yyvsp[(1) - (3)].val).type;
 			(yyval.val).is_num = true;
+			(yyval.val).is_exp = true;
+			(yyval.val).is_paran = false;
+
+			// mips
+ 		   	translate_arithmetic_op(mips_file, MY_MUL, (yyvsp[(1) - (3)].val).sval, reg1_name, reg1_type, reg1_is_num, (yyvsp[(1) - (3)].val).is_paran, (yyvsp[(3) - (3)].val).sval, reg2_name, reg2_type, reg2_is_num, (yyvsp[(3) - (3)].val).is_paran, (yyval.val).type);
 		}
+	}
+
 ;}
     break;
 
   case 56:
 
 /* Line 1455 of yacc.c  */
-#line 455 "parser.y"
+#line 505 "parser.y"
     {
-	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r')
+	// Create fields
+    char* reg1_name = strdup((yyvsp[(1) - (3)].val).reg_name);
+    char reg1_type = (yyvsp[(1) - (3)].val).type;
+    bool reg1_is_num = (yyvsp[(1) - (3)].val).is_num;
+    char* reg2_name = strdup((yyvsp[(3) - (3)].val).reg_name);
+    char reg2_type = (yyvsp[(3) - (3)].val).type;
+    bool reg2_is_num = (yyvsp[(3) - (3)].val).is_num;
+	
+	if ((yyvsp[(1) - (3)].val).type == 'r' || (yyvsp[(3) - (3)].val).type == 'r') {
 		(yyval.val).type = 'r';
+		// mips
+    	translate_arithmetic_op(mips_file, MY_DIV, (yyvsp[(1) - (3)].val).sval, reg1_name, reg1_type, reg1_is_num, (yyvsp[(1) - (3)].val).is_paran, (yyvsp[(3) - (3)].val).sval, reg2_name, reg2_type, reg2_is_num, (yyvsp[(3) - (3)].val).is_paran, (yyval.val).type);
+	}
 	else
 		if ((yyvsp[(1) - (3)].val).type == 's' || (yyvsp[(3) - (3)].val).type == 's') {
 			is_prog_valid = false;
@@ -2032,6 +2094,11 @@ yyreduce:
 		else {
 			(yyval.val).type = (yyvsp[(1) - (3)].val).type;
 			(yyval.val).is_num = true;
+			(yyval.val).is_exp = true;
+			(yyval.val).is_paran = false;
+
+			// mips
+    		translate_arithmetic_op(mips_file, MY_DIV, (yyvsp[(1) - (3)].val).sval, reg1_name, reg1_type, reg1_is_num, (yyvsp[(1) - (3)].val).is_paran, (yyvsp[(3) - (3)].val).sval, reg2_name, reg2_type, reg2_is_num, (yyvsp[(3) - (3)].val).is_paran, (yyval.val).type);
 		}
 ;}
     break;
@@ -2039,27 +2106,36 @@ yyreduce:
   case 57:
 
 /* Line 1455 of yacc.c  */
-#line 468 "parser.y"
+#line 534 "parser.y"
     {
 	(yyval.val).type = (yyvsp[(1) - (1)].val).type;
 	(yyval.val).sval = (yyvsp[(1) - (1)].val).sval;
 	(yyval.val).is_num = (yyvsp[(1) - (1)].val).is_num;
+	(yyval.val).reg_name = strdup((yyvsp[(1) - (1)].val).reg_name);
+	(yyval.val).is_exp = (yyvsp[(1) - (1)].val).is_exp;
+	(yyval.val).is_paran = (yyvsp[(1) - (1)].val).is_paran;
 ;}
     break;
 
   case 58:
 
 /* Line 1455 of yacc.c  */
-#line 475 "parser.y"
+#line 544 "parser.y"
     {
 	(yyval.val).type = (yyvsp[(2) - (3)].val).type;
+	(yyval.val).reg_name = strdup((yyvsp[(2) - (3)].val).reg_name);
+	(yyval.val).is_exp = true;
+	(yyval.val).is_num = (yyvsp[(2) - (3)].val).is_num;
+	(yyval.val).is_exp = (yyvsp[(2) - (3)].val).is_exp;
+	(yyval.val).sval = (yyvsp[(2) - (3)].val).sval;
+	(yyval.val).is_paran = true;
 ;}
     break;
 
   case 59:
 
 /* Line 1455 of yacc.c  */
-#line 478 "parser.y"
+#line 553 "parser.y"
     {
 	symbol_table_entry* tempID = lookup(SymbolTable, (yyvsp[(1) - (1)].val).sval);
 	if (tempID == NULL) { // ERROR
@@ -2080,6 +2156,9 @@ yyreduce:
 			(yyval.val).type = current_type;
 			(yyval.val).sval = (yyvsp[(1) - (1)].val).sval;
 			(yyval.val).is_num = false;
+			(yyval.val).reg_name = generate_reg_name(tempID->type);
+			(yyval.val).is_exp = false;
+			(yyval.val).is_paran = false;
 		}
 	}
 ;}
@@ -2088,19 +2167,22 @@ yyreduce:
   case 60:
 
 /* Line 1455 of yacc.c  */
-#line 501 "parser.y"
+#line 579 "parser.y"
     {
 	current_type = (yyvsp[(1) - (1)].val).type; // 'r' or 'i'
 	(yyval.val).type = current_type;
 	(yyval.val).sval = (yyvsp[(1) - (1)].val).sval;
 	(yyval.val).is_num = true;
+	(yyval.val).reg_name = generate_reg_name((yyvsp[(1) - (1)].val).type);
+	(yyval.val).is_exp = false;
+	(yyval.val).is_paran = false;
 ;}
     break;
 
 
 
 /* Line 1455 of yacc.c  */
-#line 2104 "parser.tab.c"
+#line 2186 "parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2312,7 +2394,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 509 "parser.y"
+#line 590 "parser.y"
 
 // Main function
 int main(int argc, char* argv[])
